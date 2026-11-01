@@ -1,0 +1,648 @@
+{
+  "taskId": "syntax-highlighting-20261102",
+  "workflowMode": "issue-resolution",
+  "implementationBranch": "main",
+  "baseBranch": "main",
+  "remote": "origin",
+  "originalHead": "1de212ff9dbb29ddf90fd8cf7a6b15a9bae5b7c6",
+  "designDocPaths": [
+    "design-docs/specs/design-syntax-highlighting.md",
+    "design-docs/user-qa/syntax-highlighting-qa.md"
+  ],
+  "overviewPlanPath": "impl-plans/active/syntax-00-overview.md",
+  "evidenceRoot": "tmp/syntax-highlighting-20261102",
+  "gitPolicy": "No push. Plan workers make no branches, worktrees, stashes or commits; P00 may only run the read-only git archive. Workflow finalization makes one local commit in the numbered 1-6 commit-message style.",
+  "serialReconciliation": {
+    "gate": "syntax-p09-registry-integration serially enforces exit 0 for npm run check and npm test (boundary included). Reconcile/finalization re-runs check, test, build, perf (Chromium and WebKit), e2e and the bundle-size comparison.",
+    "commands": [
+      "npm run check",
+      "npm test",
+      "npm run build",
+      "npm run perf",
+      "npm run e2e",
+      "node scripts/bundle-size.mjs --entries all"
+    ]
+  },
+  "reviewContext": {
+    "issueReference": "none (no GitHub issue supplied; intake normalized from runtimeVariables.workflowInput; workflow execution opus-terra-design-and-implement-review-loop-session-633; plan-review communication comm-012411)",
+    "userProblem": "emaki highlights only JSON. It needs syntax highlighting for at least chilla's language inventory plus selected additions. The choice between tree-sitter, canvas-native line tokenizers and a hybrid must be explicit and measured.",
+    "requiredOutcomes": [
+      "The design document records the approach decision with the measured comparison and maps all 85 chilla inventory entries (covered, or excluded with a reason).",
+      "Every non-excluded chilla language and every added language (typescript, tsx, jsx, vue, svelte, fish) highlights real tokens, verified by per-language fixture tests.",
+      "A selection API resolves languages by name, extension, filename and Markdown fence info string, with tests.",
+      "Embedded languages work in Markdown fences and HTML script/style, and also in PHP, server templates, Vue and Svelte.",
+      "npm run check, npm test and npm run build pass, and existing tests still pass.",
+      "scripts/perf includes per-language fixtures. The Chromium and WebKit budgets (first paint, scroll p95, key p95) pass, with results recorded.",
+      "The core entry bundle size is measured before and after and does not grow materially (at most 0.25 KB gzip).",
+      "The README documents the languages, the selection API, lazy loading and theme tags.",
+      "THIRD_PARTY_NOTICES.md records grammar licensing."
+    ],
+    "nonGoals": [
+      "Shipping tree-sitter in emaki. The spike is evidence only and lives outside the repo.",
+      "TextMate scope parity.",
+      "Swapping the language at runtime on a live editor.",
+      "A public grammar-authoring API. grammar.ts and the families stay internal.",
+      "Semantic or type resolution, CommonMark-complete parsing, SCSS/Less grammars, and Svelte nested-brace expressions."
+    ],
+    "constraints": [
+      "/Users/taco/gits/tacogips/vactr and /Users/taco/gits/tacogips/chilla are read-only and must not be modified.",
+      "emaki stays framework-independent with no vactr- or chilla-specific code. @codemirror/state and @codemirror/commands remain the only peer dependencies, and no dependencies are added.",
+      "Languages ship as per-language subpath exports (emaki/languages/<id>) and load lazily through emaki/languages. The '.' entry must not grow materially.",
+      "Public APIs stay backward compatible: the createEditor language option and the emaki/json and emaki/engine exports. These files are not edited: src/index.ts, src/engine.ts, src/language/index.ts, src/language/incremental.ts, src/language/json*.ts, src/render/*, src/editor.ts and src/types.ts.",
+      "Grammar sources must have MIT-compatible licenses and be recorded in THIRD_PARTY_NOTICES.md. The Swift and Nix grammars are written fresh, without copying chilla's grammars.",
+      "All commands run in the foreground, with the exit code and complete log path recorded.",
+      "The commit uses the numbered 1-6 commit-message style and is not pushed."
+    ],
+    "designDecisionsAndRationale": [
+      "Provisional canvas-native approach: emaki-original declarative grammars compile to LineLanguage<string> and run on the unchanged IncrementalHighlighter. This needs no wasm, no async init and no packaging beyond peer dependencies. The decision is confirmed only if design §3.3 (a)-(e) hold, with measured evidence in §10.",
+      "Embeds use a composite string state, which keeps checkpoint equality and the LRU cache working.",
+      "The family factories (cLike, lispLike, shellLike, markupLike, iniLike) return a GrammarDef that language modules extend, which keeps 71 modules maintainable.",
+      "Languages added beyond chilla: dedicated typescript, tsx and jsx modules (chilla aliases them to JavaScript), plus vue, svelte and fish. zsh, ksh and sh are aliases of bash.",
+      "The registry loads each language through a dynamic import, so import 'emaki' pulls in no languages."
+    ],
+    "intentionalTradeoffs": [
+      "Line-tokenizer fidelity instead of full parse trees, per the fidelity contract in design §6.",
+      "Template hosts restart HTML from its start state after a server block.",
+      "During parallel waves, the workspace-wide check and boundary logs are informational. The exit-0 gates run serially at P09 and at reconcile.",
+      "Expectations live in test/language/expectations/<group>.ts instead of design §9.1's test/fixtures/languages/expectations.ts, because tsconfig excludes test/fixtures/languages (low, documented)."
+    ],
+    "supportedEdgeCases": [
+      "Lines longer than 4096 characters, where a comment or script end crosses offset 4096 (design §9.1 a-d).",
+      "After a mid-file one-character edit, the incremental tokens equal a fresh tokenization.",
+      "A fence whose language is not loaded renders as string, and closing the fence restores Markdown tags.",
+      "Fence info forms ts, ' rust ignore', {.python} and js,linenos; longest-suffix filenames x.html.erb, x.d.ts and x.js.erb; case-insensitive resolution.",
+      "Astral characters and zero-length rules neither split surrogates nor loop."
+    ],
+    "outOfScopeEdgeCases": [
+      "Svelte '}' inside expressions, multi-line Vue opening tags, and HTML inner state across server blocks.",
+      "Python regex sub-highlighting inside strings (chilla row 52 is excluded), Perl format blocks, and SQL dialects.",
+      "Lisp reader macros beyond quoting, layout-rule parsing, and YAML flow-collection validation."
+    ],
+    "residualRisks": [
+      "The approach decision stays provisional until P12 measures its evidence. Spike network access and ABI availability are unknown (user-QA item 2).",
+      "A canvas language may miss a perf budget. This is routed to the owning plan for serial repair, and budgets are not relaxed.",
+      "Sibling-owned compile or boundary failures first appear at the P09 serial gate."
+    ],
+    "sourcePaths": [
+      "design-docs/specs/design-syntax-highlighting.md",
+      "design-docs/user-qa/syntax-highlighting-qa.md",
+      "impl-plans/active/syntax-00-overview.md",
+      "src/language/incremental.ts",
+      "src/language/json.ts",
+      "src/types.ts",
+      "scripts/perf.mjs",
+      "test/boundary.test.ts",
+      "package.json"
+    ]
+  },
+  "plans": [
+    {
+      "planId": "syntax-p00-bundle-size",
+      "planPath": "impl-plans/active/syntax-p00-bundle-size.md",
+      "dependsOn": [],
+      "writePaths": [
+        "scripts/bundle-size.mjs",
+        "impl-plans/progress/syntax-p00-bundle-size.md",
+        "tmp/syntax-p00"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p00"],
+      "acceptanceCriteria": [
+        "scripts/bundle-size.mjs exists with the CLI [--root <dir>] [--entries all|core] [--out <file.json>]. It calls the Vite build() API with write:false, minify, es2022 and @codemirror/* external, gzips with node:zlib, and imports vite dynamically through a variable specifier.",
+        "node scripts/bundle-size.mjs --entries core exits 0, with raw > 0 and gzip > 0 for '.'. --bogus and --root /nonexistent exit 2.",
+        "The baseline JSON for HEAD 1de212f, taken from a read-only git archive into $TMPDIR, is recorded in the progress log with raw and gzip for all four core entries.",
+        "The owned-path boundary grep for scripts/bundle-size.mjs prints nothing, and dist/ is not modified."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p00",
+        "node scripts/bundle-size.mjs --entries core > tmp/syntax-p00/current.log 2>&1; echo \"exit=$?\"",
+        "node scripts/bundle-size.mjs --bogus > tmp/syntax-p00/bogus.log 2>&1; echo \"exit=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p00/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E 'scripts/bundle-size\\.mjs:' tmp/syntax-p00/boundary.log; echo \"grep=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p01-engine-contract",
+      "planPath": "impl-plans/active/syntax-p01-engine-contract.md",
+      "dependsOn": [],
+      "writePaths": [
+        "src/language/tags.ts",
+        "src/language/grammar.ts",
+        "src/language/families",
+        "test/language/support",
+        "test/language/grammar.test.ts",
+        "test/language/families.test.ts",
+        "test/language/tags.test.ts",
+        "impl-plans/progress/syntax-p01-engine-contract.md",
+        "tmp/syntax-p01"
+      ],
+      "sharedPaths": ["tsconfig.json"],
+      "sharedPathNotes": [
+        {"path": "tsconfig.json", "intendedEdit": "Add only a top-level \"exclude\": [\"test/fixtures/languages\"]; nothing else changes."}
+      ],
+      "artifactRoots": ["tmp/syntax-p01"],
+      "acceptanceCriteria": [
+        "These files exist with the signatures pinned in syntax-00-overview.md: src/language/tags.ts; src/language/grammar.ts (compileGrammar, Rule, EmbedSpec, GrammarDef); src/language/families/* (cLike, lispLike, shellLike, markupLike and iniLike, each returning a GrammarDef); test/language/support/fixture-check.ts.",
+        "grammar.test.ts, families.test.ts and tags.test.ts cover the plan's cases: multiline states, capture tags, zero-length rules, astral characters, eolPop, static, dynamic and nested embeds, and the DR-003 long line. npx vitest run test/language exits 0.",
+        "tsconfig.json gains only the fixture exclude. grammar and families are not re-exported from src/language/index.ts.",
+        "src/index.ts, src/engine.ts, src/language/index.ts, src/language/incremental.ts and src/types.ts are unchanged.",
+        "The owned-path greps over the check and boundary logs print nothing. The progress log has hashes and exit codes."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p01",
+        "npx vitest run test/language > tmp/syntax-p01/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p01/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/(tags|grammar)\\.ts|src/language/families/|test/language/(support/|grammar\\.test|families\\.test|tags\\.test)|tsconfig\\.json)' tmp/syntax-p01/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p01/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/(tags|grammar)\\.ts|src/language/families/|test/language/(support/|grammar\\.test|families\\.test|tags\\.test))' tmp/syntax-p01/boundary.log; echo \"grep=$?\"",
+        "grep -n \"export function compileGrammar\" src/language/grammar.ts"
+      ]
+    },
+    {
+      "planId": "syntax-p02-lang-c-family",
+      "planPath": "impl-plans/active/syntax-p02-lang-c-family.md",
+      "dependsOn": ["syntax-p01-engine-contract"],
+      "writePaths": [
+        "src/language/langs/c.ts",
+        "src/language/langs/cpp.ts",
+        "src/language/langs/csharp.ts",
+        "src/language/langs/objc.ts",
+        "src/language/langs/objcpp.ts",
+        "src/language/langs/d.ts",
+        "src/language/langs/go.ts",
+        "src/language/langs/rust.ts",
+        "src/language/langs/zig.ts",
+        "src/language/langs/swift.ts",
+        "src/language/langs/pascal.ts",
+        "src/language/langs/actionscript.ts",
+        "test/fixtures/languages/c.c",
+        "test/fixtures/languages/cpp.cpp",
+        "test/fixtures/languages/csharp.cs",
+        "test/fixtures/languages/objc.m",
+        "test/fixtures/languages/objcpp.mm",
+        "test/fixtures/languages/d.d",
+        "test/fixtures/languages/go.go",
+        "test/fixtures/languages/rust.rs",
+        "test/fixtures/languages/zig.zig",
+        "test/fixtures/languages/swift.swift",
+        "test/fixtures/languages/pascal.pas",
+        "test/fixtures/languages/actionscript.as",
+        "test/language/expectations/c-family.ts",
+        "test/language/langs/c-family.test.ts",
+        "impl-plans/progress/syntax-p02-lang-c-family.md",
+        "tmp/syntax-p02"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p02"],
+      "acceptanceCriteria": [
+        "Each id (c, cpp, csharp, objc, objcpp, d, go, rust, zig, swift, pascal, actionscript) has a src/language/langs/<id>.ts that exports exactly <camelId>Language, compiled through compileGrammar with name '<id>', following the overview's common procedure.",
+        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/c-family.ts (cFamilyExpectations) with at least 4 snippets, including every (expect) construct.",
+        "Swift is written fresh, without consulting or copying chilla's grammar.",
+        "npx vitest run test/language/langs/c-family.test.ts exits 0.",
+        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p02",
+        "npx vitest run test/language/langs/c-family.test.ts > tmp/syntax-p02/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p02/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/langs/(c|cpp|csharp|objc|objcpp|d|go|rust|zig|swift|pascal|actionscript)\\.ts|test/language/(expectations/c-family|langs/c-family\\.test)\\.ts|test/fixtures/languages/(c|cpp|csharp|objc|objcpp|d|go|rust|zig|swift|pascal|actionscript)\\.)\\(' tmp/syntax-p02/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p02/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/langs/(c|cpp|csharp|objc|objcpp|d|go|rust|zig|swift|pascal|actionscript)\\.ts|test/language/(expectations/c-family|langs/c-family\\.test)\\.ts|test/fixtures/languages/(c|cpp|csharp|objc|objcpp|d|go|rust|zig|swift|pascal|actionscript)\\.[a-z]+):' tmp/syntax-p02/boundary.log; echo \"grep=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p03-lang-jvm-config",
+      "planPath": "impl-plans/active/syntax-p03-lang-jvm-config.md",
+      "dependsOn": ["syntax-p01-engine-contract"],
+      "writePaths": [
+        "src/language/langs/java.ts",
+        "src/language/langs/groovy.ts",
+        "src/language/langs/scala.ts",
+        "src/language/langs/kotlin.ts",
+        "src/language/langs/protobuf.ts",
+        "src/language/langs/graphql.ts",
+        "src/language/langs/dot.ts",
+        "src/language/langs/properties.ts",
+        "src/language/langs/ini.ts",
+        "src/language/langs/toml.ts",
+        "src/language/langs/hcl.ts",
+        "test/fixtures/languages/java.java",
+        "test/fixtures/languages/groovy.groovy",
+        "test/fixtures/languages/scala.scala",
+        "test/fixtures/languages/kotlin.kt",
+        "test/fixtures/languages/protobuf.proto",
+        "test/fixtures/languages/graphql.graphql",
+        "test/fixtures/languages/dot.dot",
+        "test/fixtures/languages/properties.properties",
+        "test/fixtures/languages/ini.ini",
+        "test/fixtures/languages/toml.toml",
+        "test/fixtures/languages/hcl.tf",
+        "test/language/expectations/jvm-config.ts",
+        "test/language/langs/jvm-config.test.ts",
+        "impl-plans/progress/syntax-p03-lang-jvm-config.md",
+        "tmp/syntax-p03"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p03"],
+      "acceptanceCriteria": [
+        "Each id (java, groovy, scala, kotlin, protobuf, graphql, dot, properties, ini, toml, hcl) has a src/language/langs/<id>.ts that exports exactly <camelId>Language, compiled through compileGrammar with name '<id>', following the overview's common procedure.",
+        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/jvm-config.ts (jvmConfigExpectations) with at least 4 snippets, including every (expect) construct.",
+        "java exports exactly javaLanguage, because it is the inner language for P08's jsp.",
+        "npx vitest run test/language/langs/jvm-config.test.ts exits 0.",
+        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p03",
+        "npx vitest run test/language/langs/jvm-config.test.ts > tmp/syntax-p03/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p03/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/langs/(java|groovy|scala|kotlin|protobuf|graphql|dot|properties|ini|toml|hcl)\\.ts|test/language/(expectations/jvm-config|langs/jvm-config\\.test)\\.ts|test/fixtures/languages/(java|groovy|scala|kotlin|protobuf|graphql|dot|properties|ini|toml|hcl)\\.)\\(' tmp/syntax-p03/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p03/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/langs/(java|groovy|scala|kotlin|protobuf|graphql|dot|properties|ini|toml|hcl)\\.ts|test/language/(expectations/jvm-config|langs/jvm-config\\.test)\\.ts|test/fixtures/languages/(java|groovy|scala|kotlin|protobuf|graphql|dot|properties|ini|toml|hcl)\\.[a-z]+):' tmp/syntax-p03/boundary.log; echo \"grep=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p04-lang-web",
+      "planPath": "impl-plans/active/syntax-p04-lang-web.md",
+      "dependsOn": ["syntax-p01-engine-contract"],
+      "writePaths": [
+        "src/language/langs/javascript.ts",
+        "src/language/langs/typescript.ts",
+        "src/language/langs/tsx.ts",
+        "src/language/langs/jsx.ts",
+        "src/language/langs/css.ts",
+        "src/language/langs/html.ts",
+        "src/language/langs/xml.ts",
+        "src/language/langs/vue.ts",
+        "src/language/langs/svelte.ts",
+        "test/fixtures/languages/javascript.js",
+        "test/fixtures/languages/typescript.ts",
+        "test/fixtures/languages/tsx.tsx",
+        "test/fixtures/languages/jsx.jsx",
+        "test/fixtures/languages/css.css",
+        "test/fixtures/languages/html.html",
+        "test/fixtures/languages/xml.xml",
+        "test/fixtures/languages/vue.vue",
+        "test/fixtures/languages/svelte.svelte",
+        "test/fixtures/languages/nant.build",
+        "test/language/expectations/web.ts",
+        "test/language/langs/web.test.ts",
+        "impl-plans/progress/syntax-p04-lang-web.md",
+        "tmp/syntax-p04"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p04"],
+      "acceptanceCriteria": [
+        "The exports are exactly javascriptLanguage, typescriptLanguage, tsxLanguage, jsxLanguage, cssLanguage, htmlLanguage, xmlLanguage, vueLanguage and svelteLanguage, each compiled through compileGrammar with name '<id>'.",
+        "Each sample, including nant.build for alias row 7, exists (20-60 lines) and uses only relative imports, with none of the forbidden strings. test/language/expectations/web.ts exports webExpectations and nantExpectation, with at least 4 snippets per id, including every (expect) construct.",
+        "HTML <script>/<style>, Vue and Svelte use static embeds.",
+        "npx vitest run test/language/langs/web.test.ts exits 0.",
+        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p04",
+        "npx vitest run test/language/langs/web.test.ts > tmp/syntax-p04/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p04/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/langs/(javascript|typescript|tsx|jsx|css|html|xml|vue|svelte)\\.ts|test/language/(expectations/web|langs/web\\.test)\\.ts|test/fixtures/languages/(javascript|typescript|tsx|jsx|css|html|xml|vue|svelte|nant)\\.)\\(' tmp/syntax-p04/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p04/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/langs/(javascript|typescript|tsx|jsx|css|html|xml|vue|svelte)\\.ts|test/language/(expectations/web|langs/web\\.test)\\.ts|test/fixtures/languages/(javascript|typescript|tsx|jsx|css|html|xml|vue|svelte|nant)\\.[a-z]+):' tmp/syntax-p04/boundary.log; echo \"grep=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p05-lang-scripting",
+      "planPath": "impl-plans/active/syntax-p05-lang-scripting.md",
+      "dependsOn": ["syntax-p01-engine-contract"],
+      "writePaths": [
+        "src/language/langs/python.ts",
+        "src/language/langs/ruby.ts",
+        "src/language/langs/perl.ts",
+        "src/language/langs/lua.ts",
+        "src/language/langs/r.ts",
+        "src/language/langs/tcl.ts",
+        "src/language/langs/bash.ts",
+        "src/language/langs/fish.ts",
+        "src/language/langs/batch.ts",
+        "src/language/langs/applescript.ts",
+        "src/language/langs/makefile.ts",
+        "src/language/langs/dockerfile.ts",
+        "src/language/langs/sql.ts",
+        "src/language/langs/regexp.ts",
+        "test/fixtures/languages/python.py",
+        "test/fixtures/languages/ruby.rb",
+        "test/fixtures/languages/perl.pl",
+        "test/fixtures/languages/lua.lua",
+        "test/fixtures/languages/r.r",
+        "test/fixtures/languages/tcl.tcl",
+        "test/fixtures/languages/bash.sh",
+        "test/fixtures/languages/fish.fish",
+        "test/fixtures/languages/batch.bat",
+        "test/fixtures/languages/applescript.applescript",
+        "test/fixtures/languages/makefile.mk",
+        "test/fixtures/languages/dockerfile.dockerfile",
+        "test/fixtures/languages/sql.sql",
+        "test/fixtures/languages/regexp.re",
+        "test/language/expectations/scripting.ts",
+        "test/language/langs/scripting.test.ts",
+        "impl-plans/progress/syntax-p05-lang-scripting.md",
+        "tmp/syntax-p05"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p05"],
+      "acceptanceCriteria": [
+        "Each of the 14 ids (python, ruby, perl, lua, r, tcl, bash, fish, batch, applescript, makefile, dockerfile, sql, regexp) has a src/language/langs/<id>.ts that exports exactly <camelId>Language, compiled through compileGrammar with name '<id>'.",
+        "ruby, tcl and bash export exactly rubyLanguage, tclLanguage and bashLanguage, because they are the inner languages for erb, tcl-html and dockerfile.",
+        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/scripting.ts (scriptingExpectations) with at least 4 snippets, including every (expect) construct.",
+        "npx vitest run test/language/langs/scripting.test.ts exits 0.",
+        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p05",
+        "npx vitest run test/language/langs/scripting.test.ts > tmp/syntax-p05/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p05/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/langs/(python|ruby|perl|lua|r|tcl|bash|fish|batch|applescript|makefile|dockerfile|sql|regexp)\\.ts|test/language/(expectations/scripting|langs/scripting\\.test)\\.ts|test/fixtures/languages/(python|ruby|perl|lua|r|tcl|bash|fish|batch|applescript|makefile|dockerfile|sql|regexp)\\.)\\(' tmp/syntax-p05/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p05/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/langs/(python|ruby|perl|lua|r|tcl|bash|fish|batch|applescript|makefile|dockerfile|sql|regexp)\\.ts|test/language/(expectations/scripting|langs/scripting\\.test)\\.ts|test/fixtures/languages/(python|ruby|perl|lua|r|tcl|bash|fish|batch|applescript|makefile|dockerfile|sql|regexp)\\.[a-z]+):' tmp/syntax-p05/boundary.log; echo \"grep=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p06-lang-functional",
+      "planPath": "impl-plans/active/syntax-p06-lang-functional.md",
+      "dependsOn": ["syntax-p01-engine-contract"],
+      "writePaths": [
+        "src/language/langs/haskell.ts",
+        "src/language/langs/ocaml.ts",
+        "src/language/langs/erlang.ts",
+        "src/language/langs/clojure.ts",
+        "src/language/langs/lisp.ts",
+        "src/language/langs/nix.ts",
+        "src/language/langs/matlab.ts",
+        "test/fixtures/languages/haskell.hs",
+        "test/fixtures/languages/ocaml.ml",
+        "test/fixtures/languages/erlang.erl",
+        "test/fixtures/languages/clojure.clj",
+        "test/fixtures/languages/lisp.lisp",
+        "test/fixtures/languages/nix.nix",
+        "test/fixtures/languages/matlab.m",
+        "test/language/expectations/functional.ts",
+        "test/language/langs/functional.test.ts",
+        "impl-plans/progress/syntax-p06-lang-functional.md",
+        "tmp/syntax-p06"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p06"],
+      "acceptanceCriteria": [
+        "Each id (haskell, ocaml, erlang, clojure, lisp, nix, matlab) has a src/language/langs/<id>.ts that exports exactly <camelId>Language, compiled through compileGrammar with name '<id>'.",
+        "erlang exports exactly erlangLanguage, because it is the inner language for P08's erlang-html. Nix is written fresh, without consulting chilla's grammar.",
+        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/functional.ts (functionalExpectations) with at least 4 snippets, including every (expect) construct.",
+        "npx vitest run test/language/langs/functional.test.ts exits 0.",
+        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p06",
+        "npx vitest run test/language/langs/functional.test.ts > tmp/syntax-p06/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p06/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/langs/(haskell|ocaml|erlang|clojure|lisp|nix|matlab)\\.ts|test/language/(expectations/functional|langs/functional\\.test)\\.ts|test/fixtures/languages/(haskell|ocaml|erlang|clojure|lisp|nix|matlab)\\.)\\(' tmp/syntax-p06/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p06/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/langs/(haskell|ocaml|erlang|clojure|lisp|nix|matlab)\\.ts|test/language/(expectations/functional|langs/functional\\.test)\\.ts|test/fixtures/languages/(haskell|ocaml|erlang|clojure|lisp|nix|matlab)\\.[a-z]+):' tmp/syntax-p06/boundary.log; echo \"grep=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p07-lang-docs-markup",
+      "planPath": "impl-plans/active/syntax-p07-lang-docs-markup.md",
+      "dependsOn": ["syntax-p01-engine-contract"],
+      "writePaths": [
+        "src/language/langs/markdown.ts",
+        "src/language/langs/restructuredtext.ts",
+        "src/language/langs/textile.ts",
+        "src/language/langs/latex.ts",
+        "src/language/langs/tex.ts",
+        "src/language/langs/bibtex.ts",
+        "src/language/langs/rd.ts",
+        "src/language/langs/diff.ts",
+        "src/language/langs/yaml.ts",
+        "src/language/langs/haml.ts",
+        "src/language/langs/plaintext.ts",
+        "src/language/langs/json.ts",
+        "test/fixtures/languages/markdown.md",
+        "test/fixtures/languages/restructuredtext.rst",
+        "test/fixtures/languages/textile.textile",
+        "test/fixtures/languages/latex.tex",
+        "test/fixtures/languages/tex.tex",
+        "test/fixtures/languages/bibtex.bib",
+        "test/fixtures/languages/rd.rd",
+        "test/fixtures/languages/diff.diff",
+        "test/fixtures/languages/yaml.yaml",
+        "test/fixtures/languages/haml.haml",
+        "test/fixtures/languages/json.json",
+        "test/language/expectations/docs-markup.ts",
+        "test/language/langs/docs-markup.test.ts",
+        "impl-plans/progress/syntax-p07-lang-docs-markup.md",
+        "tmp/syntax-p07"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p07"],
+      "acceptanceCriteria": [
+        "Each id (markdown, restructuredtext, textile, latex, tex, bibtex, rd, diff, yaml, haml, plaintext, json) has a src/language/langs/<id>.ts that exports exactly <camelId>Language.",
+        "markdown is the dynamic-embed fence host (createMarkdownLanguage). plaintext emits no tokens. langs/json.ts is a pure re-export of the existing jsonLanguage.",
+        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/docs-markup.ts (docsMarkupExpectations), with the prose classes for prose languages and at least 4 snippets, including every (expect) construct.",
+        "npx vitest run test/language/langs/docs-markup.test.ts exits 0.",
+        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p07",
+        "npx vitest run test/language/langs/docs-markup.test.ts > tmp/syntax-p07/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p07/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/langs/(markdown|restructuredtext|textile|latex|tex|bibtex|rd|diff|yaml|haml|plaintext|json)\\.ts|test/language/(expectations/docs-markup|langs/docs-markup\\.test)\\.ts|test/fixtures/languages/(markdown|restructuredtext|textile|latex|tex|bibtex|rd|diff|yaml|haml|json)\\.)\\(' tmp/syntax-p07/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p07/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/langs/(markdown|restructuredtext|textile|latex|tex|bibtex|rd|diff|yaml|haml|plaintext|json)\\.ts|test/language/(expectations/docs-markup|langs/docs-markup\\.test)\\.ts|test/fixtures/languages/(markdown|restructuredtext|textile|latex|tex|bibtex|rd|diff|yaml|haml|json)\\.[a-z]+):' tmp/syntax-p07/boundary.log; echo \"grep=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p08-lang-templates",
+      "planPath": "impl-plans/active/syntax-p08-lang-templates.md",
+      "dependsOn": [
+        "syntax-p03-lang-jvm-config",
+        "syntax-p04-lang-web",
+        "syntax-p05-lang-scripting",
+        "syntax-p06-lang-functional"
+      ],
+      "writePaths": [
+        "src/language/templates/html-template.ts",
+        "src/language/langs/php.ts",
+        "src/language/langs/asp.ts",
+        "src/language/langs/jsp.ts",
+        "src/language/langs/erb.ts",
+        "src/language/langs/erlang-html.ts",
+        "src/language/langs/tcl-html.ts",
+        "test/fixtures/languages/php.php",
+        "test/fixtures/languages/asp.asp",
+        "test/fixtures/languages/jsp.jsp",
+        "test/fixtures/languages/erb.erb",
+        "test/fixtures/languages/erlang-html.yaws",
+        "test/fixtures/languages/tcl-html.adp",
+        "test/language/expectations/templates.ts",
+        "test/language/langs/templates.test.ts",
+        "impl-plans/progress/syntax-p08-lang-templates.md",
+        "tmp/syntax-p08"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p08"],
+      "acceptanceCriteria": [
+        "Each id (php, asp, jsp, erb, erlang-html, tcl-html) has a src/language/langs/<id>.ts that exports exactly <camelId>Language (for example erlangHtmlLanguage) and uses static embeds of html plus the server language.",
+        "The shared helper src/language/templates/html-template.ts lives outside langs/. Its header documents that HTML resumes from its start state after a server block.",
+        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/templates.ts (templatesExpectations) with at least 4 snippets, including every (expect) construct.",
+        "npx vitest run test/language/langs/templates.test.ts exits 0.",
+        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p08",
+        "npx vitest run test/language/langs/templates.test.ts > tmp/syntax-p08/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p08/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/templates/html-template\\.ts|src/language/langs/(php|asp|jsp|erb|erlang-html|tcl-html)\\.ts|test/language/(expectations/templates|langs/templates\\.test)\\.ts|test/fixtures/languages/(php|asp|jsp|erb|erlang-html|tcl-html)\\.)\\(' tmp/syntax-p08/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p08/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/templates/html-template\\.ts|src/language/langs/(php|asp|jsp|erb|erlang-html|tcl-html)\\.ts|test/language/(expectations/templates|langs/templates\\.test)\\.ts|test/fixtures/languages/(php|asp|jsp|erb|erlang-html|tcl-html)\\.[a-z]+):' tmp/syntax-p08/boundary.log; echo \"grep=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p09-registry-integration",
+      "planPath": "impl-plans/active/syntax-p09-registry-integration.md",
+      "dependsOn": [
+        "syntax-p02-lang-c-family",
+        "syntax-p03-lang-jvm-config",
+        "syntax-p04-lang-web",
+        "syntax-p05-lang-scripting",
+        "syntax-p06-lang-functional",
+        "syntax-p07-lang-docs-markup",
+        "syntax-p08-lang-templates"
+      ],
+      "writePaths": [
+        "src/language/registry.ts",
+        "test/language/registry.test.ts",
+        "test/language/languages.test.ts",
+        "test/language/embedded.test.ts",
+        "test/language/long-line.test.ts",
+        "impl-plans/progress/syntax-p09-registry-integration.md",
+        "tmp/syntax-p09"
+      ],
+      "sharedPaths": ["package.json"],
+      "sharedPathNotes": [
+        {"path": "package.json", "intendedEdit": "Add only the exports \"./languages\": \"./src/language/registry.ts\" and \"./languages/*\": \"./src/language/langs/*.ts\" after ./json, keeping the existing four entries byte-identical, and add \"THIRD_PARTY_NOTICES.md\" to files. No dependency or script changes."}
+      ],
+      "artifactRoots": ["tmp/syntax-p09"],
+      "acceptanceCriteria": [
+        "src/language/registry.ts resolves languages by name, alias, extension, filename (longest suffix) and Markdown fence info string. Resolution is case-insensitive and returns undefined for unknown input.",
+        "loadLanguage lazily imports ./langs/* (at least 71 dynamic imports, no static lang imports). It caches results and does not cache rejections.",
+        "These tests exist and pass: registry; languages (every module-backed id has a sample and expectations, and an incremental edit equals a fresh run); embedded (Markdown fences, HTML script/style, Vue, Svelte, PHP); long-line (design §9.1 a-d plus a Markdown fence case).",
+        "Serial integration gate: npm run check and npm test (including test/boundary.test.ts) exit 0. Failures in P00-P08 files are recorded as blockers naming the owning plan, and P09 does not edit those files.",
+        "src/index.ts, src/engine.ts and src/language/index.ts are unchanged, and the registry is not reachable from '.' or './engine'."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p09",
+        "npm run check > tmp/syntax-p09/check.log 2>&1; echo \"exit=$?\"",
+        "npx vitest run test/language > tmp/syntax-p09/lang.log 2>&1; echo \"exit=$?\"",
+        "npm test > tmp/syntax-p09/test.log 2>&1; echo \"exit=$?\"",
+        "grep -c \"import('./langs/\" src/language/registry.ts",
+        "grep -nE \"^import .*langs/\" src/language/registry.ts",
+        "git diff --exit-code -- src/index.ts src/engine.ts src/language/index.ts"
+      ]
+    },
+    {
+      "planId": "syntax-p10-perf-harness",
+      "planPath": "impl-plans/active/syntax-p10-perf-harness.md",
+      "dependsOn": ["syntax-p09-registry-integration"],
+      "writePaths": [
+        "examples/languages",
+        "impl-plans/progress/syntax-p10-perf-harness.md",
+        "dist",
+        "perf-results/syntax-p10",
+        "tmp/syntax-p10"
+      ],
+      "sharedPaths": ["scripts/perf.mjs", "vite.config.ts"],
+      "sharedPathNotes": [
+        {"path": "scripts/perf.mjs", "intendedEdit": "Add the --suite json|langs|all, --dist <dir> and --langs <ids> options and the language suite with <metric>@<id> gates. The JSON and diff suites keep their gate names, budgets and semantics. Under --suite langs, env.distSha256 hashes <dist>/languages/index.html."},
+        {"path": "vite.config.ts", "intendedEdit": "Append examples/languages/index.html to rollupOptions.input; nothing else changes."}
+      ],
+      "artifactRoots": ["dist", "perf-results/syntax-p10", "tmp/syntax-p10"],
+      "acceptanceCriteria": [
+        "examples/languages/index.html?lang=<id>&lines=<n>&autoload=0 builds a document from test/fixtures/languages/<id>.* (imported as ?raw), calls loadLanguage, installs examples/json-10k/perf-hook.ts and exposes window.__emakiLang.",
+        "npm run build emits dist/languages/index.html with separate language chunks. node scripts/perf.mjs --self-test exits 0, and --suite bogus exits 2.",
+        "npm run perf passes every JSON, diff and @<lang> gate on Chromium and WebKit: perf-results/syntax-p10/full/summary.json has allPass true, or every foreground slice does without lowering --loads or --keys. The contents are copied into the progress log.",
+        "npm run check, npm run e2e and the boundary test exit 0. A failing @<id> gate is recorded as a blocker for the owning language plan, without relaxing budgets or editing langs/*."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p10 perf-results/syntax-p10",
+        "npm run check > tmp/syntax-p10/check.log 2>&1; echo \"exit=$?\"",
+        "npm run build > tmp/syntax-p10/build.log 2>&1; echo \"exit=$?\"",
+        "node scripts/perf.mjs --self-test > tmp/syntax-p10/selftest.log 2>&1; echo \"exit=$?\"",
+        "npm run perf -- --out perf-results/syntax-p10/full > tmp/syntax-p10/perf.log 2>&1; echo \"exit=$?\"",
+        "npm run e2e > tmp/syntax-p10/e2e.log 2>&1; echo \"exit=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p10/boundary.log 2>&1; echo \"exit=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p11-readme",
+      "planPath": "impl-plans/active/syntax-p11-readme.md",
+      "dependsOn": ["syntax-p09-registry-integration"],
+      "writePaths": [
+        "README.md",
+        "impl-plans/progress/syntax-p11-readme.md",
+        "tmp/syntax-p11"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p11"],
+      "acceptanceCriteria": [
+        "The README's ## Languages section keeps its first paragraph and adds five subsections: Built-in languages (a table taken from registry.ts, 71 ids), Selecting a language, Lazy loading, Embedded languages (with known limitations) and Theme tags (the 23 standardTags and defaultTokenColors).",
+        "The export list mentions emaki/languages and emaki/languages/<id>. Other README sections are not restructured.",
+        "grep finds resolveLanguage, loadLanguage, defaultTokenColors and emaki/languages/. The progress log records the table-count check (71)."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p11",
+        "grep -n \"resolveLanguage\\|loadLanguage\\|defaultTokenColors\\|emaki/languages/\" README.md",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p11/boundary.log 2>&1; echo \"exit=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p12-comparison-evidence",
+      "planPath": "impl-plans/active/syntax-p12-comparison-evidence.md",
+      "dependsOn": ["syntax-p00-bundle-size", "syntax-p10-perf-harness"],
+      "writePaths": [
+        "THIRD_PARTY_NOTICES.md",
+        "impl-plans/progress/syntax-p12-comparison-evidence.md",
+        "perf-results/syntax-p12",
+        "tmp/syntax-p12"
+      ],
+      "sharedPaths": [
+        "design-docs/specs/design-syntax-highlighting.md",
+        "design-docs/user-qa/syntax-highlighting-qa.md"
+      ],
+      "sharedPathNotes": [
+        {"path": "design-docs/specs/design-syntax-highlighting.md", "intendedEdit": "Fill §10 only, and update the Status line and the §3.1 heading to confirmed or provisional per §3.3."},
+        {"path": "design-docs/user-qa/syntax-highlighting-qa.md", "intendedEdit": "Append a hybrid proposal referencing item 1, only if §3.3 reopens the decision."}
+      ],
+      "artifactRoots": ["perf-results/syntax-p12", "tmp/syntax-p12"],
+      "acceptanceCriteria": [
+        "The tree-sitter spike lives only in $TMPDIR/emaki-ts-spike, outside the repo. The progress log records its toolchain manifest: versions, install command, exit code and the sha256 of every .wasm file. If the install fails, blocked: cells are written and the decision stays provisional.",
+        "Both approaches are measured with the same harness for typescript, python, rust and html on Chromium and WebKit. Sizes come from built assets, not package metadata.",
+        "Bundle 'after' versus P00's baseline must meet these gates: '.' delta at most 0.25 KB gzip; each language at most 6 KB gzip (12 KB for embedding hosts); the registry at most 6 KB.",
+        "Design §10 has no TBD, and every cell holds a measured value or blocked: <reason>. The Status is set by applying §3.3 literally.",
+        "THIRD_PARTY_NOTICES.md states that emaki's grammars are original MIT work, and lists the consulted references and spike-only packages with MIT-compatible licenses.",
+        "This plan makes no changes to src, test, scripts, examples or package.json, and the boundary test exits 0."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p12 perf-results/syntax-p12",
+        "node scripts/perf.mjs --suite langs --langs typescript,python,rust,html --out perf-results/syntax-p12/canvas-cmp > tmp/syntax-p12/perf-canvas.log 2>&1; echo \"exit=$?\"",
+        "node scripts/perf.mjs --suite langs --dist \"$TMPDIR/emaki-ts-spike/dist\" --langs typescript,python,rust,html --out perf-results/syntax-p12/treesitter-cmp > tmp/syntax-p12/perf-ts.log 2>&1; echo \"exit=$?\"",
+        "node scripts/bundle-size.mjs --entries all --out tmp/syntax-p12/after.json > tmp/syntax-p12/after.log 2>&1; echo \"exit=$?\"",
+        "grep -c \"blocked:\\|TBD\" design-docs/specs/design-syntax-highlighting.md",
+        "git diff --stat -- src test scripts examples package.json",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p12/boundary.log 2>&1; echo \"exit=$?\""
+      ]
+    }
+  ]
+}
