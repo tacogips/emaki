@@ -84,6 +84,14 @@ export class EditorCore {
     this.current = this.current.update({ effects: this.undoSlot.reconfigure([]), filter: false }).state;
     this.current = this.current.update({ effects: this.undoSlot.reconfigure([history(), historyField.init(() => bounded.value)]), filter: false }).state;
   }
+  /** Discards both undo and redo branches; all other state fields survive. Safe inside a transaction hook. */
+  resetHistory(): void {
+    if (this.disposed) return;
+    this.current = this.current.update({ effects: this.undoSlot.reconfigure([]), filter: false }).state;
+    this.current = this.current.update({ effects: this.undoSlot.reconfigure(history()), filter: false }).state;
+    this.undoBytes = 0;
+    this.reduced = false;
+  }
   undo(): boolean { return undo({ state: this.state, dispatch: (tr) => this.dispatch(tr) }); }
   redo(): boolean { return redo({ state: this.state, dispatch: (tr) => this.dispatch(tr) }); }
   onTransaction(cb: (tr: Transaction) => void): () => void { this.transactionListeners.add(cb); return () => this.transactionListeners.delete(cb); }

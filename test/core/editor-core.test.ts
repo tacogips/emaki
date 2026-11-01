@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { isolateHistory } from '@codemirror/commands';
 import { EditorCore } from '../../src/core/editor-core';
 import { InputController } from '../../src/input/input';
 import { TextLayout } from '../../src/layout/layout';
@@ -27,6 +28,23 @@ describe('EditorCore', () => {
     const core = new EditorCore({ doc: 'abc', externalHistory: { retainedBytes: 0, reducedDepth: false, trimToBytes } });
     core.dispatch({ changes: { from: 0, insert: 'x' } });
     expect(trimToBytes).toHaveBeenCalledOnce();
+  });
+
+  it('resets both history branches from a transaction hook before publishing', () => {
+    const core = new EditorCore({ doc: 'abc' });
+    core.dispatch({ changes: { from: 0, insert: 'x' }, annotations: isolateHistory.of('full') });
+    core.dispatch({ changes: { from: 0, insert: 'y' }, annotations: isolateHistory.of('full') });
+    core.undo();
+    expect(core.retentionStatus).toMatchObject({ undoDepth: 1, redoDepth: 1 });
+    core.onTransaction((tr) => { if (tr.isUserEvent('input.replace')) core.resetHistory(); });
+    let published = { undo: -1, redo: -1 };
+    core.subscribe(() => { published = { undo: core.retentionStatus.undoDepth, redo: core.retentionStatus.redoDepth }; });
+    core.dispatch({ changes: { from: 0, to: core.state.doc.length, insert: 'new' }, userEvent: 'input.replace.document' });
+    expect(published).toEqual({ undo: 0, redo: 0 });
+    expect(core.state.doc.toString()).toBe('new');
+    expect(core.undo()).toBe(false);
+    core.dispatch({ changes: { from: 0, insert: 'z' } });
+    expect(core.retentionStatus.undoDepth).toBe(1);
   });
 
   it('defers source writes intersecting composition until cleared', () => {
