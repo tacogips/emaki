@@ -11,8 +11,25 @@
   - `test/language/grammar.test.ts`
   - `test/language/families.test.ts`
   - `test/language/tags.test.ts`
+  - `test/boundary.test.ts` (**restore-only**, checkpoint amendment round 1; see below)
   - `impl-plans/progress/syntax-p01-engine-contract.md`
+  - `tmp/syntax-p01` (artifact root)
 - **sharedPaths:** `tsconfig.json` (add `"exclude": ["test/fixtures/languages"]` only; nothing else changes)
+
+## Checkpoint amendment round 1 (`integration-636-boundary-ownership`)
+
+Context: an unowned working-tree edit added a root-level `rootSkipped` set (`node_modules`, `dist`, `.git`, `tmp`, `coverage`, `perf-results`, `test-results`, `playwright-report`) to `test/boundary.test.ts`. It stops the boundary gate from scanning `tmp/`, which silently voids P12's spike-leak gate (`syntax-p12-comparison-evidence.md:18,121`) and contradicts `syntax-00-overview.md:48`. The author is unknown. P01 now owns the file **for restoration only**.
+
+Precondition (orchestrator-owned, not P01): the plan-authoring scratch `tmp/syntax-highlighting-20261102/checkpoint/gen.mjs` (contains the forbidden text and an `emaki` import) is relocated outside the repo, for example to `$TMPDIR`, and the move is recorded in the reconcile notes. The Opus plan author attempted the move in step 4 and was denied shell permission, so the orchestrator must do it before redispatching P01.
+
+Ordered steps:
+
+1. `test ! -e tmp/syntax-highlighting-20261102/checkpoint/gen.mjs; echo "relocated=$?"`. If this prints `relocated=1`, still do steps 2-4, then record a blocker naming the path and the orchestrator. Do **not** move, edit or delete anything under `tmp/syntax-highlighting-20261102/`.
+2. Record the pre-sha256 of `test/boundary.test.ts`, then run `git checkout 0e8f398 -- test/boundary.test.ts`. Record the post-sha256. That is the only permitted change to this file.
+3. `git diff --quiet 0e8f398 -- test/boundary.test.ts; echo "diff=$?"` → `diff=0`.
+4. Run the boundary test (see Verification). At the HEAD scope it must exit 0. Wave 1's other plan (P00) is already accepted and no sibling runs concurrently, so a non-zero exit is not informational for this one check. Every violation must name a non-P01 path, and each is recorded as a blocker with its owner.
+
+Forbidden: widening any skip set, adding a new skip mechanism, deleting or weakening boundary assertions, or editing `src/index.ts`, `src/engine.ts`, `src/language/index.ts`, `src/language/incremental.ts`, `src/types.ts` or `package.json`.
 
 ## Intent
 
@@ -221,7 +238,8 @@ Add a top-level `"exclude": ["test/fixtures/languages"]`. Changing nothing else 
 npx vitest run test/language > tmp/syntax-p01/test.log 2>&1; echo "exit=$?"     # MUST exit 0 (includes the existing json/incremental/fixture tests; no sibling in wave 1 writes test/language)
 npm run check > tmp/syntax-p01/check.log 2>&1; echo "exit=$?"                  # exit code is informational
 grep -E '^(src/language/(tags|grammar)\.ts|src/language/families/|test/language/(support/|grammar\.test|families\.test|tags\.test)|tsconfig\.json)' tmp/syntax-p01/check.log; echo "grep=$?"     # MUST print nothing (grep=1)
-npx vitest run test/boundary.test.ts > tmp/syntax-p01/boundary.log 2>&1; echo "exit=$?"     # exit code is informational
+git diff --quiet 0e8f398 -- test/boundary.test.ts; echo "diff=$?"                          # MUST be diff=0 (amendment round 1)
+npx vitest run test/boundary.test.ts > tmp/syntax-p01/boundary.log 2>&1; echo "exit=$?"     # MUST exit 0 at HEAD scope (amendment round 1); non-P01 violations become blockers
 grep -E '(src/language/(tags|grammar)\.ts|src/language/families/|test/language/(support/|grammar\.test|families\.test|tags\.test))' tmp/syntax-p01/boundary.log; echo "grep=$?"     # MUST print nothing (grep=1)
 ```
 
@@ -236,3 +254,4 @@ grep -E '(src/language/(tags|grammar)\.ts|src/language/families/|test/language/(
 - Both owned-path greps print nothing.
 - `git diff --stat -- src/index.ts src/engine.ts src/language/index.ts src/language/incremental.ts src/types.ts` is empty.
 - The progress log has hashes and exit codes.
+- Amendment round 1: `git diff --quiet 0e8f398 -- test/boundary.test.ts` exits 0, and `npx vitest run test/boundary.test.ts` exits 0. The progress log records the pre/post sha256 of `test/boundary.test.ts`, the commands, exit codes and log paths. It also corrects its earlier wording: the earlier boundary pass relied on the unowned `tmp/` skip and does not count as evidence.

@@ -95,32 +95,31 @@
       "package.json"
     ]
   },
-  "plans": [
+  "checkpointAmendment": {
+    "amendmentRound": 1,
+    "maxAmendmentRounds": 2,
+    "id": "integration-636-boundary-ownership",
+    "reason": "integration-paths-outside-writePaths",
+    "previousCheckpointCommit": "0e8f39895e1c7f093df2c807f82eefc019a35e8a",
+    "unmatchedPaths": ["test/boundary.test.ts"],
+    "resolution": {"assignedPlanId": "syntax-p01-engine-contract", "mode": "restore-only writePath"},
+    "orchestratorPrecondition": "Relocate tmp/syntax-highlighting-20261102/checkpoint/gen.mjs outside the repo (record sha256 before/after) before redispatching syntax-p01-engine-contract. Still open at checkpoint time: the plan-checkpoint node was denied shell permission to move it."
+  },
+  "acceptedDependencies": [
     {
       "planId": "syntax-p00-bundle-size",
       "planPath": "impl-plans/active/syntax-p00-bundle-size.md",
-      "dependsOn": [],
-      "writePaths": [
-        "scripts/bundle-size.mjs",
-        "impl-plans/progress/syntax-p00-bundle-size.md",
-        "tmp/syntax-p00"
+      "commit": "0e8f39895e1c7f093df2c807f82eefc019a35e8a",
+      "provides": [
+        "scripts/bundle-size.mjs (accepted; sha256 9f925d5fd722167af6e6480a4790938d99722e607a94c85b5639ca9058c44218; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p00-bundle-size.md (baseline for 1de212f: '.' 160599/42528, engine 158740/42723, json 2853/1387, diff 3011/1269 raw/gzip)"
       ],
-      "sharedPaths": [],
-      "artifactRoots": ["tmp/syntax-p00"],
-      "acceptanceCriteria": [
-        "scripts/bundle-size.mjs exists with the CLI [--root <dir>] [--entries all|core] [--out <file.json>]. It calls the Vite build() API with write:false, minify, es2022 and @codemirror/* external, gzips with node:zlib, and imports vite dynamically through a variable specifier.",
-        "node scripts/bundle-size.mjs --entries core exits 0, with raw > 0 and gzip > 0 for '.'. --bogus and --root /nonexistent exit 2.",
-        "The baseline JSON for HEAD 1de212f, taken from a read-only git archive into $TMPDIR, is recorded in the progress log with raw and gzip for all four core entries.",
-        "The owned-path boundary grep for scripts/bundle-size.mjs prints nothing, and dist/ is not modified."
-      ],
-      "verification": [
-        "mkdir -p tmp/syntax-p00",
-        "node scripts/bundle-size.mjs --entries core > tmp/syntax-p00/current.log 2>&1; echo \"exit=$?\"",
-        "node scripts/bundle-size.mjs --bogus > tmp/syntax-p00/bogus.log 2>&1; echo \"exit=$?\"",
-        "npx vitest run test/boundary.test.ts > tmp/syntax-p00/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E 'scripts/bundle-size\\.mjs:' tmp/syntax-p00/boundary.log; echo \"grep=$?\""
+      "deferredLowFindings": [
+        "impl-plans/progress/syntax-p00-bundle-size.md:45 calls the boundary-v2 failure 'transient'; corrected at integration/reconcile."
       ]
-    },
+    }
+  ],
+  "plans": [
     {
       "planId": "syntax-p01-engine-contract",
       "planPath": "impl-plans/active/syntax-p01-engine-contract.md",
@@ -133,6 +132,7 @@
         "test/language/grammar.test.ts",
         "test/language/families.test.ts",
         "test/language/tags.test.ts",
+        "test/boundary.test.ts",
         "impl-plans/progress/syntax-p01-engine-contract.md",
         "tmp/syntax-p01"
       ],
@@ -146,10 +146,14 @@
         "grammar.test.ts, families.test.ts and tags.test.ts cover the plan's cases: multiline states, capture tags, zero-length rules, astral characters, eolPop, static, dynamic and nested embeds, and the DR-003 long line. npx vitest run test/language exits 0.",
         "tsconfig.json gains only the fixture exclude. grammar and families are not re-exported from src/language/index.ts.",
         "src/index.ts, src/engine.ts, src/language/index.ts, src/language/incremental.ts and src/types.ts are unchanged.",
-        "The owned-path greps over the check and boundary logs print nothing. The progress log has hashes and exit codes."
+        "The owned-path greps over the check and boundary logs print nothing. The progress log has hashes and exit codes.",
+        "Checkpoint amendment round 1 (integration-636-boundary-ownership): test/boundary.test.ts is a restore-only writePath. Its only permitted change is `git checkout 0e8f398 -- test/boundary.test.ts`; no new logic, no widened skip set, no deleted assertions. Afterwards test/boundary.test.ts is byte-identical to checkpoint 0e8f398 (git diff --quiet 0e8f398 -- test/boundary.test.ts exits 0), and npx vitest run test/boundary.test.ts exits 0 at that HEAD scope. If it exits non-zero only because of non-P01 paths (for example tmp/syntax-highlighting-20261102/checkpoint/gen.mjs not yet relocated by the orchestrator), P01 records a blocker naming those paths and the orchestrator, and does not edit them."
       ],
       "verification": [
         "mkdir -p tmp/syntax-p01",
+        "test ! -e tmp/syntax-highlighting-20261102/checkpoint/gen.mjs; echo \"relocated=$?\"",
+        "git checkout 0e8f398 -- test/boundary.test.ts; echo \"exit=$?\"",
+        "git diff --quiet 0e8f398 -- test/boundary.test.ts; echo \"diff=$?\"",
         "npx vitest run test/language > tmp/syntax-p01/test.log 2>&1; echo \"exit=$?\"",
         "npm run check > tmp/syntax-p01/check.log 2>&1; echo \"exit=$?\"",
         "grep -E '^(src/language/(tags|grammar)\\.ts|src/language/families/|test/language/(support/|grammar\\.test|families\\.test|tags\\.test)|tsconfig\\.json)' tmp/syntax-p01/check.log; echo \"grep=$?\"",
