@@ -58,7 +58,11 @@
       "Embeds use a composite string state, which keeps checkpoint equality and the LRU cache working.",
       "The family factories (cLike, lispLike, shellLike, markupLike, iniLike) return a GrammarDef that language modules extend, which keeps 71 modules maintainable.",
       "Languages added beyond chilla: dedicated typescript, tsx and jsx modules (chilla aliases them to JavaScript), plus vue, svelte and fish. zsh, ksh and sh are aliases of bash.",
-      "The registry loads each language through a dynamic import, so import 'emaki' pulls in no languages."
+      "The registry loads each language through a dynamic import, so import 'emaki' pulls in no languages.",
+      {
+        "decision": "Amendment 2026-11-04 round 1: contract amendment for syntax-p08-lang-templates. The zero-length HTML embed is no longer required to open on an empty line. On an empty line the P01 grammar engine (src/language/grammar.ts, unchanged) returns the unchanged incoming state with no tokens, and HTML opens at offset 0 of the next nonempty line. P08 resumes alone and adds an empty-line state-equality assertion in test/language/langs/templates.test.ts.",
+        "rationale": "Blocked plan: syntax-p08-lang-templates (blocked-wave-scope-or-contract; blocker path src/language/grammar.ts is outside P08 writePaths). Resolved gap: the engine loops only while pos < text.length, so the plan-only clause 'It must also open on an empty line' could not be satisfied. The design has no empty-line requirement and keeps 'Template hosts restart HTML from its start state after a server block'. Observable tokens are identical. Plan IDs, DAG, writePaths and artifactRoots are unchanged, and grammar.ts stays P01-owned. P01-P07 are recorded as acceptedDependencies. Amendment section: impl-plans/active/syntax-p08-lang-templates.md."
+      }
     ],
     "intentionalTradeoffs": [
       "Line-tokenizer fidelity instead of full parse trees, per the fidelity contract in design §6.",
@@ -81,7 +85,9 @@
     "residualRisks": [
       "The approach decision stays provisional until P12 measures its evidence. Spike network access and ABI availability are unknown (user-QA item 2).",
       "A canvas language may miss a perf budget. This is routed to the owning plan for serial repair, and budgets are not relaxed.",
-      "Sibling-owned compile or boundary failures first appear at the P09 serial gate."
+      "Sibling-owned compile or boundary failures first appear at the P09 serial gate.",
+      "Shared amendment budget: after round 1 (blocked-wave-scope-or-contract, P08) one round of 2 remains.",
+      "src/language/grammar.ts is untracked, so 'unchanged by P08' is shown against P01's recorded sha256 (55cddf2a9af0373701a03b329eaf48d969577a43d11a66012ff7ca070b4c280f in tmp/syntax-highlighting-20261102/syntax-p01-engine-contract/redispatch-hashes.log), not git diff."
     ],
     "sourcePaths": [
       "design-docs/specs/design-syntax-highlighting.md",
@@ -98,12 +104,23 @@
   "checkpointAmendment": {
     "amendmentRound": 1,
     "maxAmendmentRounds": 2,
-    "id": "integration-636-boundary-ownership",
-    "reason": "integration-paths-outside-writePaths",
-    "previousCheckpointCommit": "0e8f39895e1c7f093df2c807f82eefc019a35e8a",
-    "unmatchedPaths": ["test/boundary.test.ts"],
-    "resolution": {"assignedPlanId": "syntax-p01-engine-contract", "mode": "restore-only writePath"},
-    "orchestratorPrecondition": "Relocate tmp/syntax-highlighting-20261102/checkpoint/gen.mjs outside the repo (record sha256 before/after) before redispatching syntax-p01-engine-contract. Still open at checkpoint time: the plan-checkpoint node was denied shell permission to move it."
+    "id": "session-701-wave-002-p08-empty-line-contract",
+    "reason": "blocked-wave-scope-or-contract",
+    "previousCheckpointCommit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+    "blockedPlanIds": ["syntax-p08-lang-templates"],
+    "blockerPaths": ["src/language/grammar.ts"],
+    "resolution": {"mode": "contract amendment (no engine change)", "planId": "syntax-p08-lang-templates", "amendmentSection": "impl-plans/active/syntax-p08-lang-templates.md: Amendment 2026-11-04 (blocked-wave-scope-or-contract, round 1)"},
+    "summaryPath": "tmp/opus-terra-waves/opus-terra-design-and-implement-review-loop-session-701/wave-002/wave-summary.json",
+    "rawJoinPath": "tmp/opus-terra-waves/opus-terra-design-and-implement-review-loop-session-701/wave-002/fanout-join.json",
+    "priorAmendments": [
+      {
+        "id": "integration-636-boundary-ownership",
+        "reason": "integration-paths-outside-writePaths",
+        "previousCheckpointCommit": "0e8f39895e1c7f093df2c807f82eefc019a35e8a",
+        "unmatchedPaths": ["test/boundary.test.ts"],
+        "resolution": {"assignedPlanId": "syntax-p01-engine-contract", "mode": "restore-only writePath"}
+      }
+    ]
   },
   "acceptedDependencies": [
     {
@@ -117,355 +134,72 @@
       "deferredLowFindings": [
         "impl-plans/progress/syntax-p00-bundle-size.md:45 calls the boundary-v2 failure 'transient'; corrected at integration/reconcile."
       ]
-    }
-  ],
-  "plans": [
+    },
     {
       "planId": "syntax-p01-engine-contract",
       "planPath": "impl-plans/active/syntax-p01-engine-contract.md",
-      "dependsOn": [],
-      "writePaths": [
-        "src/language/tags.ts",
-        "src/language/grammar.ts",
-        "src/language/families",
-        "test/language/support",
-        "test/language/grammar.test.ts",
-        "test/language/families.test.ts",
-        "test/language/tags.test.ts",
-        "test/boundary.test.ts",
-        "impl-plans/progress/syntax-p01-engine-contract.md",
-        "tmp/syntax-p01"
-      ],
-      "sharedPaths": ["tsconfig.json"],
-      "sharedPathNotes": [
-        {"path": "tsconfig.json", "intendedEdit": "Add only a top-level \"exclude\": [\"test/fixtures/languages\"]; nothing else changes."}
-      ],
-      "artifactRoots": ["tmp/syntax-p01"],
-      "acceptanceCriteria": [
-        "These files exist with the signatures pinned in syntax-00-overview.md: src/language/tags.ts; src/language/grammar.ts (compileGrammar, Rule, EmbedSpec, GrammarDef); src/language/families/* (cLike, lispLike, shellLike, markupLike and iniLike, each returning a GrammarDef); test/language/support/fixture-check.ts.",
-        "grammar.test.ts, families.test.ts and tags.test.ts cover the plan's cases: multiline states, capture tags, zero-length rules, astral characters, eolPop, static, dynamic and nested embeds, and the DR-003 long line. npx vitest run test/language exits 0.",
-        "tsconfig.json gains only the fixture exclude. grammar and families are not re-exported from src/language/index.ts.",
-        "src/index.ts, src/engine.ts, src/language/index.ts, src/language/incremental.ts and src/types.ts are unchanged.",
-        "The owned-path greps over the check and boundary logs print nothing. The progress log has hashes and exit codes.",
-        "Checkpoint amendment round 1 (integration-636-boundary-ownership): test/boundary.test.ts is a restore-only writePath. Its only permitted change is `git checkout 0e8f398 -- test/boundary.test.ts`; no new logic, no widened skip set, no deleted assertions. Afterwards test/boundary.test.ts is byte-identical to checkpoint 0e8f398 (git diff --quiet 0e8f398 -- test/boundary.test.ts exits 0), and npx vitest run test/boundary.test.ts exits 0 at that HEAD scope. If it exits non-zero only because of non-P01 paths (for example tmp/syntax-highlighting-20261102/checkpoint/gen.mjs not yet relocated by the orchestrator), P01 records a blocker naming those paths and the orchestrator, and does not edit them."
-      ],
-      "verification": [
-        "mkdir -p tmp/syntax-p01",
-        "test ! -e tmp/syntax-highlighting-20261102/checkpoint/gen.mjs; echo \"relocated=$?\"",
-        "git checkout 0e8f398 -- test/boundary.test.ts; echo \"exit=$?\"",
-        "git diff --quiet 0e8f398 -- test/boundary.test.ts; echo \"diff=$?\"",
-        "npx vitest run test/language > tmp/syntax-p01/test.log 2>&1; echo \"exit=$?\"",
-        "npm run check > tmp/syntax-p01/check.log 2>&1; echo \"exit=$?\"",
-        "grep -E '^(src/language/(tags|grammar)\\.ts|src/language/families/|test/language/(support/|grammar\\.test|families\\.test|tags\\.test)|tsconfig\\.json)' tmp/syntax-p01/check.log; echo \"grep=$?\"",
-        "npx vitest run test/boundary.test.ts > tmp/syntax-p01/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E '(src/language/(tags|grammar)\\.ts|src/language/families/|test/language/(support/|grammar\\.test|families\\.test|tags\\.test))' tmp/syntax-p01/boundary.log; echo \"grep=$?\"",
-        "grep -n \"export function compileGrammar\" src/language/grammar.ts"
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "src/language/tags.ts, src/language/grammar.ts (compileGrammar, Rule, EmbedSpec, GrammarDef; sha256 55cddf2a9af0373701a03b329eaf48d969577a43d11a66012ff7ca070b4c280f), src/language/families/*, test/language/support/fixture-check.ts, the tsconfig.json fixture exclude, and test/boundary.test.ts restored to 0e8f398 (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p01-engine-contract.md"
       ]
     },
     {
       "planId": "syntax-p02-lang-c-family",
       "planPath": "impl-plans/active/syntax-p02-lang-c-family.md",
-      "dependsOn": ["syntax-p01-engine-contract"],
-      "writePaths": [
-        "src/language/langs/c.ts",
-        "src/language/langs/cpp.ts",
-        "src/language/langs/csharp.ts",
-        "src/language/langs/objc.ts",
-        "src/language/langs/objcpp.ts",
-        "src/language/langs/d.ts",
-        "src/language/langs/go.ts",
-        "src/language/langs/rust.ts",
-        "src/language/langs/zig.ts",
-        "src/language/langs/swift.ts",
-        "src/language/langs/pascal.ts",
-        "src/language/langs/actionscript.ts",
-        "test/fixtures/languages/c.c",
-        "test/fixtures/languages/cpp.cpp",
-        "test/fixtures/languages/csharp.cs",
-        "test/fixtures/languages/objc.m",
-        "test/fixtures/languages/objcpp.mm",
-        "test/fixtures/languages/d.d",
-        "test/fixtures/languages/go.go",
-        "test/fixtures/languages/rust.rs",
-        "test/fixtures/languages/zig.zig",
-        "test/fixtures/languages/swift.swift",
-        "test/fixtures/languages/pascal.pas",
-        "test/fixtures/languages/actionscript.as",
-        "test/language/expectations/c-family.ts",
-        "test/language/langs/c-family.test.ts",
-        "impl-plans/progress/syntax-p02-lang-c-family.md",
-        "tmp/syntax-p02"
-      ],
-      "sharedPaths": [],
-      "artifactRoots": ["tmp/syntax-p02"],
-      "acceptanceCriteria": [
-        "Each id (c, cpp, csharp, objc, objcpp, d, go, rust, zig, swift, pascal, actionscript) has a src/language/langs/<id>.ts that exports exactly <camelId>Language, compiled through compileGrammar with name '<id>', following the overview's common procedure.",
-        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/c-family.ts (cFamilyExpectations) with at least 4 snippets, including every (expect) construct.",
-        "Swift is written fresh, without consulting or copying chilla's grammar.",
-        "npx vitest run test/language/langs/c-family.test.ts exits 0.",
-        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
-        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
-      ],
-      "verification": [
-        "mkdir -p tmp/syntax-p02",
-        "npx vitest run test/language/langs/c-family.test.ts > tmp/syntax-p02/test.log 2>&1; echo \"exit=$?\"",
-        "npm run check > tmp/syntax-p02/check.log 2>&1; echo \"exit=$?\"",
-        "grep -E '^(src/language/langs/(c|cpp|csharp|objc|objcpp|d|go|rust|zig|swift|pascal|actionscript)\\.ts|test/language/(expectations/c-family|langs/c-family\\.test)\\.ts|test/fixtures/languages/(c|cpp|csharp|objc|objcpp|d|go|rust|zig|swift|pascal|actionscript)\\.)\\(' tmp/syntax-p02/check.log; echo \"grep=$?\"",
-        "npx vitest run test/boundary.test.ts > tmp/syntax-p02/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E '(src/language/langs/(c|cpp|csharp|objc|objcpp|d|go|rust|zig|swift|pascal|actionscript)\\.ts|test/language/(expectations/c-family|langs/c-family\\.test)\\.ts|test/fixtures/languages/(c|cpp|csharp|objc|objcpp|d|go|rust|zig|swift|pascal|actionscript)\\.[a-z]+):' tmp/syntax-p02/boundary.log; echo \"grep=$?\""
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "C-family language modules, fixtures and expectations under src/language/langs, test/fixtures/languages and test/language (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p02-lang-c-family.md"
       ]
     },
     {
       "planId": "syntax-p03-lang-jvm-config",
       "planPath": "impl-plans/active/syntax-p03-lang-jvm-config.md",
-      "dependsOn": ["syntax-p01-engine-contract"],
-      "writePaths": [
-        "src/language/langs/java.ts",
-        "src/language/langs/groovy.ts",
-        "src/language/langs/scala.ts",
-        "src/language/langs/kotlin.ts",
-        "src/language/langs/protobuf.ts",
-        "src/language/langs/graphql.ts",
-        "src/language/langs/dot.ts",
-        "src/language/langs/properties.ts",
-        "src/language/langs/ini.ts",
-        "src/language/langs/toml.ts",
-        "src/language/langs/hcl.ts",
-        "test/fixtures/languages/java.java",
-        "test/fixtures/languages/groovy.groovy",
-        "test/fixtures/languages/scala.scala",
-        "test/fixtures/languages/kotlin.kt",
-        "test/fixtures/languages/protobuf.proto",
-        "test/fixtures/languages/graphql.graphql",
-        "test/fixtures/languages/dot.dot",
-        "test/fixtures/languages/properties.properties",
-        "test/fixtures/languages/ini.ini",
-        "test/fixtures/languages/toml.toml",
-        "test/fixtures/languages/hcl.tf",
-        "test/language/expectations/jvm-config.ts",
-        "test/language/langs/jvm-config.test.ts",
-        "impl-plans/progress/syntax-p03-lang-jvm-config.md",
-        "tmp/syntax-p03"
-      ],
-      "sharedPaths": [],
-      "artifactRoots": ["tmp/syntax-p03"],
-      "acceptanceCriteria": [
-        "Each id (java, groovy, scala, kotlin, protobuf, graphql, dot, properties, ini, toml, hcl) has a src/language/langs/<id>.ts that exports exactly <camelId>Language, compiled through compileGrammar with name '<id>', following the overview's common procedure.",
-        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/jvm-config.ts (jvmConfigExpectations) with at least 4 snippets, including every (expect) construct.",
-        "java exports exactly javaLanguage, because it is the inner language for P08's jsp.",
-        "npx vitest run test/language/langs/jvm-config.test.ts exits 0.",
-        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
-        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
-      ],
-      "verification": [
-        "mkdir -p tmp/syntax-p03",
-        "npx vitest run test/language/langs/jvm-config.test.ts > tmp/syntax-p03/test.log 2>&1; echo \"exit=$?\"",
-        "npm run check > tmp/syntax-p03/check.log 2>&1; echo \"exit=$?\"",
-        "grep -E '^(src/language/langs/(java|groovy|scala|kotlin|protobuf|graphql|dot|properties|ini|toml|hcl)\\.ts|test/language/(expectations/jvm-config|langs/jvm-config\\.test)\\.ts|test/fixtures/languages/(java|groovy|scala|kotlin|protobuf|graphql|dot|properties|ini|toml|hcl)\\.)\\(' tmp/syntax-p03/check.log; echo \"grep=$?\"",
-        "npx vitest run test/boundary.test.ts > tmp/syntax-p03/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E '(src/language/langs/(java|groovy|scala|kotlin|protobuf|graphql|dot|properties|ini|toml|hcl)\\.ts|test/language/(expectations/jvm-config|langs/jvm-config\\.test)\\.ts|test/fixtures/languages/(java|groovy|scala|kotlin|protobuf|graphql|dot|properties|ini|toml|hcl)\\.[a-z]+):' tmp/syntax-p03/boundary.log; echo \"grep=$?\""
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "JVM and config language modules (including java for jsp), fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p03-lang-jvm-config.md"
       ]
     },
     {
       "planId": "syntax-p04-lang-web",
       "planPath": "impl-plans/active/syntax-p04-lang-web.md",
-      "dependsOn": ["syntax-p01-engine-contract"],
-      "writePaths": [
-        "src/language/langs/javascript.ts",
-        "src/language/langs/typescript.ts",
-        "src/language/langs/tsx.ts",
-        "src/language/langs/jsx.ts",
-        "src/language/langs/css.ts",
-        "src/language/langs/html.ts",
-        "src/language/langs/xml.ts",
-        "src/language/langs/vue.ts",
-        "src/language/langs/svelte.ts",
-        "test/fixtures/languages/javascript.js",
-        "test/fixtures/languages/typescript.ts",
-        "test/fixtures/languages/tsx.tsx",
-        "test/fixtures/languages/jsx.jsx",
-        "test/fixtures/languages/css.css",
-        "test/fixtures/languages/html.html",
-        "test/fixtures/languages/xml.xml",
-        "test/fixtures/languages/vue.vue",
-        "test/fixtures/languages/svelte.svelte",
-        "test/fixtures/languages/nant.build",
-        "test/language/expectations/web.ts",
-        "test/language/langs/web.test.ts",
-        "impl-plans/progress/syntax-p04-lang-web.md",
-        "tmp/syntax-p04"
-      ],
-      "sharedPaths": [],
-      "artifactRoots": ["tmp/syntax-p04"],
-      "acceptanceCriteria": [
-        "The exports are exactly javascriptLanguage, typescriptLanguage, tsxLanguage, jsxLanguage, cssLanguage, htmlLanguage, xmlLanguage, vueLanguage and svelteLanguage, each compiled through compileGrammar with name '<id>'.",
-        "Each sample, including nant.build for alias row 7, exists (20-60 lines) and uses only relative imports, with none of the forbidden strings. test/language/expectations/web.ts exports webExpectations and nantExpectation, with at least 4 snippets per id, including every (expect) construct.",
-        "HTML <script>/<style>, Vue and Svelte use static embeds.",
-        "npx vitest run test/language/langs/web.test.ts exits 0.",
-        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
-        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
-      ],
-      "verification": [
-        "mkdir -p tmp/syntax-p04",
-        "npx vitest run test/language/langs/web.test.ts > tmp/syntax-p04/test.log 2>&1; echo \"exit=$?\"",
-        "npm run check > tmp/syntax-p04/check.log 2>&1; echo \"exit=$?\"",
-        "grep -E '^(src/language/langs/(javascript|typescript|tsx|jsx|css|html|xml|vue|svelte)\\.ts|test/language/(expectations/web|langs/web\\.test)\\.ts|test/fixtures/languages/(javascript|typescript|tsx|jsx|css|html|xml|vue|svelte|nant)\\.)\\(' tmp/syntax-p04/check.log; echo \"grep=$?\"",
-        "npx vitest run test/boundary.test.ts > tmp/syntax-p04/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E '(src/language/langs/(javascript|typescript|tsx|jsx|css|html|xml|vue|svelte)\\.ts|test/language/(expectations/web|langs/web\\.test)\\.ts|test/fixtures/languages/(javascript|typescript|tsx|jsx|css|html|xml|vue|svelte|nant)\\.[a-z]+):' tmp/syntax-p04/boundary.log; echo \"grep=$?\""
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "Web language modules (including htmlLanguage, used as the template host embed), fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p04-lang-web.md"
       ]
     },
     {
       "planId": "syntax-p05-lang-scripting",
       "planPath": "impl-plans/active/syntax-p05-lang-scripting.md",
-      "dependsOn": ["syntax-p01-engine-contract"],
-      "writePaths": [
-        "src/language/langs/python.ts",
-        "src/language/langs/ruby.ts",
-        "src/language/langs/perl.ts",
-        "src/language/langs/lua.ts",
-        "src/language/langs/r.ts",
-        "src/language/langs/tcl.ts",
-        "src/language/langs/bash.ts",
-        "src/language/langs/fish.ts",
-        "src/language/langs/batch.ts",
-        "src/language/langs/applescript.ts",
-        "src/language/langs/makefile.ts",
-        "src/language/langs/dockerfile.ts",
-        "src/language/langs/sql.ts",
-        "src/language/langs/regexp.ts",
-        "test/fixtures/languages/python.py",
-        "test/fixtures/languages/ruby.rb",
-        "test/fixtures/languages/perl.pl",
-        "test/fixtures/languages/lua.lua",
-        "test/fixtures/languages/r.r",
-        "test/fixtures/languages/tcl.tcl",
-        "test/fixtures/languages/bash.sh",
-        "test/fixtures/languages/fish.fish",
-        "test/fixtures/languages/batch.bat",
-        "test/fixtures/languages/applescript.applescript",
-        "test/fixtures/languages/makefile.mk",
-        "test/fixtures/languages/dockerfile.dockerfile",
-        "test/fixtures/languages/sql.sql",
-        "test/fixtures/languages/regexp.re",
-        "test/language/expectations/scripting.ts",
-        "test/language/langs/scripting.test.ts",
-        "impl-plans/progress/syntax-p05-lang-scripting.md",
-        "tmp/syntax-p05"
-      ],
-      "sharedPaths": [],
-      "artifactRoots": ["tmp/syntax-p05"],
-      "acceptanceCriteria": [
-        "Each of the 14 ids (python, ruby, perl, lua, r, tcl, bash, fish, batch, applescript, makefile, dockerfile, sql, regexp) has a src/language/langs/<id>.ts that exports exactly <camelId>Language, compiled through compileGrammar with name '<id>'.",
-        "ruby, tcl and bash export exactly rubyLanguage, tclLanguage and bashLanguage, because they are the inner languages for erb, tcl-html and dockerfile.",
-        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/scripting.ts (scriptingExpectations) with at least 4 snippets, including every (expect) construct.",
-        "npx vitest run test/language/langs/scripting.test.ts exits 0.",
-        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
-        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
-      ],
-      "verification": [
-        "mkdir -p tmp/syntax-p05",
-        "npx vitest run test/language/langs/scripting.test.ts > tmp/syntax-p05/test.log 2>&1; echo \"exit=$?\"",
-        "npm run check > tmp/syntax-p05/check.log 2>&1; echo \"exit=$?\"",
-        "grep -E '^(src/language/langs/(python|ruby|perl|lua|r|tcl|bash|fish|batch|applescript|makefile|dockerfile|sql|regexp)\\.ts|test/language/(expectations/scripting|langs/scripting\\.test)\\.ts|test/fixtures/languages/(python|ruby|perl|lua|r|tcl|bash|fish|batch|applescript|makefile|dockerfile|sql|regexp)\\.)\\(' tmp/syntax-p05/check.log; echo \"grep=$?\"",
-        "npx vitest run test/boundary.test.ts > tmp/syntax-p05/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E '(src/language/langs/(python|ruby|perl|lua|r|tcl|bash|fish|batch|applescript|makefile|dockerfile|sql|regexp)\\.ts|test/language/(expectations/scripting|langs/scripting\\.test)\\.ts|test/fixtures/languages/(python|ruby|perl|lua|r|tcl|bash|fish|batch|applescript|makefile|dockerfile|sql|regexp)\\.[a-z]+):' tmp/syntax-p05/boundary.log; echo \"grep=$?\""
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "Scripting language modules (including the ruby and tcl server languages), fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p05-lang-scripting.md"
       ]
     },
     {
       "planId": "syntax-p06-lang-functional",
       "planPath": "impl-plans/active/syntax-p06-lang-functional.md",
-      "dependsOn": ["syntax-p01-engine-contract"],
-      "writePaths": [
-        "src/language/langs/haskell.ts",
-        "src/language/langs/ocaml.ts",
-        "src/language/langs/erlang.ts",
-        "src/language/langs/clojure.ts",
-        "src/language/langs/lisp.ts",
-        "src/language/langs/nix.ts",
-        "src/language/langs/matlab.ts",
-        "test/fixtures/languages/haskell.hs",
-        "test/fixtures/languages/ocaml.ml",
-        "test/fixtures/languages/erlang.erl",
-        "test/fixtures/languages/clojure.clj",
-        "test/fixtures/languages/lisp.lisp",
-        "test/fixtures/languages/nix.nix",
-        "test/fixtures/languages/matlab.m",
-        "test/language/expectations/functional.ts",
-        "test/language/langs/functional.test.ts",
-        "impl-plans/progress/syntax-p06-lang-functional.md",
-        "tmp/syntax-p06"
-      ],
-      "sharedPaths": [],
-      "artifactRoots": ["tmp/syntax-p06"],
-      "acceptanceCriteria": [
-        "Each id (haskell, ocaml, erlang, clojure, lisp, nix, matlab) has a src/language/langs/<id>.ts that exports exactly <camelId>Language, compiled through compileGrammar with name '<id>'.",
-        "erlang exports exactly erlangLanguage, because it is the inner language for P08's erlang-html. Nix is written fresh, without consulting chilla's grammar.",
-        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/functional.ts (functionalExpectations) with at least 4 snippets, including every (expect) construct.",
-        "npx vitest run test/language/langs/functional.test.ts exits 0.",
-        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
-        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
-      ],
-      "verification": [
-        "mkdir -p tmp/syntax-p06",
-        "npx vitest run test/language/langs/functional.test.ts > tmp/syntax-p06/test.log 2>&1; echo \"exit=$?\"",
-        "npm run check > tmp/syntax-p06/check.log 2>&1; echo \"exit=$?\"",
-        "grep -E '^(src/language/langs/(haskell|ocaml|erlang|clojure|lisp|nix|matlab)\\.ts|test/language/(expectations/functional|langs/functional\\.test)\\.ts|test/fixtures/languages/(haskell|ocaml|erlang|clojure|lisp|nix|matlab)\\.)\\(' tmp/syntax-p06/check.log; echo \"grep=$?\"",
-        "npx vitest run test/boundary.test.ts > tmp/syntax-p06/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E '(src/language/langs/(haskell|ocaml|erlang|clojure|lisp|nix|matlab)\\.ts|test/language/(expectations/functional|langs/functional\\.test)\\.ts|test/fixtures/languages/(haskell|ocaml|erlang|clojure|lisp|nix|matlab)\\.[a-z]+):' tmp/syntax-p06/boundary.log; echo \"grep=$?\""
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "Functional language modules (including the erlang server language), fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p06-lang-functional.md"
       ]
     },
     {
       "planId": "syntax-p07-lang-docs-markup",
       "planPath": "impl-plans/active/syntax-p07-lang-docs-markup.md",
-      "dependsOn": ["syntax-p01-engine-contract"],
-      "writePaths": [
-        "src/language/langs/markdown.ts",
-        "src/language/langs/restructuredtext.ts",
-        "src/language/langs/textile.ts",
-        "src/language/langs/latex.ts",
-        "src/language/langs/tex.ts",
-        "src/language/langs/bibtex.ts",
-        "src/language/langs/rd.ts",
-        "src/language/langs/diff.ts",
-        "src/language/langs/yaml.ts",
-        "src/language/langs/haml.ts",
-        "src/language/langs/plaintext.ts",
-        "src/language/langs/json.ts",
-        "test/fixtures/languages/markdown.md",
-        "test/fixtures/languages/restructuredtext.rst",
-        "test/fixtures/languages/textile.textile",
-        "test/fixtures/languages/latex.tex",
-        "test/fixtures/languages/tex.tex",
-        "test/fixtures/languages/bibtex.bib",
-        "test/fixtures/languages/rd.rd",
-        "test/fixtures/languages/diff.diff",
-        "test/fixtures/languages/yaml.yaml",
-        "test/fixtures/languages/haml.haml",
-        "test/fixtures/languages/json.json",
-        "test/language/expectations/docs-markup.ts",
-        "test/language/langs/docs-markup.test.ts",
-        "impl-plans/progress/syntax-p07-lang-docs-markup.md",
-        "tmp/syntax-p07"
-      ],
-      "sharedPaths": [],
-      "artifactRoots": ["tmp/syntax-p07"],
-      "acceptanceCriteria": [
-        "Each id (markdown, restructuredtext, textile, latex, tex, bibtex, rd, diff, yaml, haml, plaintext, json) has a src/language/langs/<id>.ts that exports exactly <camelId>Language.",
-        "markdown is the dynamic-embed fence host (createMarkdownLanguage). plaintext emits no tokens. langs/json.ts is a pure re-export of the existing jsonLanguage.",
-        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/docs-markup.ts (docsMarkupExpectations), with the prose classes for prose languages and at least 4 snippets, including every (expect) construct.",
-        "npx vitest run test/language/langs/docs-markup.test.ts exits 0.",
-        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
-        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
-      ],
-      "verification": [
-        "mkdir -p tmp/syntax-p07",
-        "npx vitest run test/language/langs/docs-markup.test.ts > tmp/syntax-p07/test.log 2>&1; echo \"exit=$?\"",
-        "npm run check > tmp/syntax-p07/check.log 2>&1; echo \"exit=$?\"",
-        "grep -E '^(src/language/langs/(markdown|restructuredtext|textile|latex|tex|bibtex|rd|diff|yaml|haml|plaintext|json)\\.ts|test/language/(expectations/docs-markup|langs/docs-markup\\.test)\\.ts|test/fixtures/languages/(markdown|restructuredtext|textile|latex|tex|bibtex|rd|diff|yaml|haml|json)\\.)\\(' tmp/syntax-p07/check.log; echo \"grep=$?\"",
-        "npx vitest run test/boundary.test.ts > tmp/syntax-p07/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E '(src/language/langs/(markdown|restructuredtext|textile|latex|tex|bibtex|rd|diff|yaml|haml|plaintext|json)\\.ts|test/language/(expectations/docs-markup|langs/docs-markup\\.test)\\.ts|test/fixtures/languages/(markdown|restructuredtext|textile|latex|tex|bibtex|rd|diff|yaml|haml|json)\\.[a-z]+):' tmp/syntax-p07/boundary.log; echo \"grep=$?\""
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "Docs and markup language modules, fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p07-lang-docs-markup.md"
       ]
-    },
+    }
+  ],
+  "plans": [
     {
       "planId": "syntax-p08-lang-templates",
       "planPath": "impl-plans/active/syntax-p08-lang-templates.md",
@@ -502,7 +236,8 @@
         "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/templates.ts (templatesExpectations) with at least 4 snippets, including every (expect) construct.",
         "npx vitest run test/language/langs/templates.test.ts exits 0.",
         "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
-        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers."
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers.",
+        "Checkpoint amendment 2026-11-04 round 1 (blocked-wave-scope-or-contract): replacement empty-line contract per the plan's amendment section. An empty root line yields no tokens, does not throw, and returns its incoming state. An empty line inside the open HTML embed keeps the state. The next nonempty HTML line tags as with no empty line. test/language/langs/templates.test.ts asserts the empty-line state equality. src/language/grammar.ts is not edited, and its sha256 still equals P01's recorded 55cddf2a9af0373701a03b329eaf48d969577a43d11a66012ff7ca070b4c280f. The progress log records the amendment and clears the blocker."
       ],
       "verification": [
         "mkdir -p tmp/syntax-p08",
@@ -510,7 +245,8 @@
         "npm run check > tmp/syntax-p08/check.log 2>&1; echo \"exit=$?\"",
         "grep -E '^(src/language/templates/html-template\\.ts|src/language/langs/(php|asp|jsp|erb|erlang-html|tcl-html)\\.ts|test/language/(expectations/templates|langs/templates\\.test)\\.ts|test/fixtures/languages/(php|asp|jsp|erb|erlang-html|tcl-html)\\.)\\(' tmp/syntax-p08/check.log; echo \"grep=$?\"",
         "npx vitest run test/boundary.test.ts > tmp/syntax-p08/boundary.log 2>&1; echo \"exit=$?\"",
-        "grep -E '(src/language/templates/html-template\\.ts|src/language/langs/(php|asp|jsp|erb|erlang-html|tcl-html)\\.ts|test/language/(expectations/templates|langs/templates\\.test)\\.ts|test/fixtures/languages/(php|asp|jsp|erb|erlang-html|tcl-html)\\.[a-z]+):' tmp/syntax-p08/boundary.log; echo \"grep=$?\""
+        "grep -E '(src/language/templates/html-template\\.ts|src/language/langs/(php|asp|jsp|erb|erlang-html|tcl-html)\\.ts|test/language/(expectations/templates|langs/templates\\.test)\\.ts|test/fixtures/languages/(php|asp|jsp|erb|erlang-html|tcl-html)\\.[a-z]+):' tmp/syntax-p08/boundary.log; echo \"grep=$?\"",
+        "shasum -a 256 src/language/grammar.ts > tmp/syntax-p08/grammar.sha256; grep -q '^55cddf2a9af0373701a03b329eaf48d969577a43d11a66012ff7ca070b4c280f ' tmp/syntax-p08/grammar.sha256; echo \"grammarUnchanged=$?\""
       ]
     },
     {
