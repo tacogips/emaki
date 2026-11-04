@@ -1,0 +1,21 @@
+<html>
+<body>
+<erl>
+% comment
+X = 42,
+case X of
+  42 -> "hello"
+end.
+</erl>
+<p>done</p>
+</body>
+</html>
+<p>sample content</p>
+<p>sample content</p>
+<p>sample content</p>
+<p>sample content</p>
+<p>sample content</p>
+<p>sample content</p>
+<p>sample content</p>
+<p>sample content</p>
+<p>sample content</p>

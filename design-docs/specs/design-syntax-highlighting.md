@@ -1,6 +1,6 @@
 # Design: multi-language syntax highlighting
 
-**Status.** Accepted for implementation. The approach decision (section 3) is provisional until section 10 is complete. Section 3.3 decides between confirming and reopening it. Missing comparative measurements keep it provisional; they never confirm it.
+**Status.** Accepted for implementation. The canvas-native approach decision is confirmed under section 3.3 by the evidence in section 10.
 
 **Scope.** The emaki repository only. The chilla and vactr repositories are read-only references. emaki gets no chilla- or vactr-specific code.
 
@@ -45,7 +45,7 @@ None of these behaviors change.
 
 ## 3. Approach decision
 
-### 3.1 Provisional decision: canvas-native
+### 3.1 Confirmed decision: canvas-native
 
 All languages are emaki-original line tokenizers. They are compiled from compact declarative grammars, implement `LineLanguage<string>`, and run on the unchanged `IncrementalHighlighter`. No tree-sitter adapter ships.
 
@@ -415,46 +415,235 @@ Each added language is **C**, with its own fixture under section 9.1.
 
 ## 10. Evidence (filled during implementation)
 
-Each cell holds a measured value or `blocked: <reason>`. A `blocked` cell keeps section 3.3 provisional.
+All sizes below are bytes gzip from built assets. Browser values are milliseconds unless otherwise stated; p95 uses nearest rank. Raw data and environment: `perf-results/syntax-p12/`.
 
 ### 10.1 Size and cold load
 
-Per approach, for runtime, typescript, python, rust and html:
+Runtime: canvas modules include their common tokenizer code; tree-sitter runtime JS 19331 plus runtime wasm 81307 bytes gzip. Query text is included in the spike page JS.
 
-| Column | canvas-native | tree-sitter |
-|---|---|---|
-| Asset size | gzip of the JS module | gzip of the wasm plus JS |
-| Cold load (ms) | Chromium / WebKit | Chromium / WebKit |
+| Language | Canvas module gzip | Tree-sitter grammar wasm gzip | Canvas cold load Chromium / WebKit p95 ms | Tree-sitter cold load Chromium / WebKit p95 ms |
+|---|---:|---:|---|---|
+| typescript | 2623 | 213554 | 5.70 / 9.00 | 58.10 / 72.00 |
+| python | 1983 | 70888 | 2.80 / 7.00 | 29.90 / 36.00 |
+| rust | 2529 | 100734 | 3.70 / 7.00 | 39.60 / 70.00 |
+| html | 3131 | 6568 | 5.80 / 8.00 | 37.70 / 45.00 |
+
+HTML injection adds JavaScript 79004 and CSS 17287 bytes gzip of grammar wasm.
 
 ### 10.2 Editor budgets at 10k lines
 
-Per approach, per comparison-set language, on Chromium and WebKit: `firstPaintMs`, `scrollWorkP95`, `keyWorkP95` and `nextFrameRatio`, each with pass or fail against the budget.
+Values are first paint / scroll p95 / key p95 / next-frame ratio, followed by each gate result in that order. Budgets are 200 ms / 16.7 ms / 16.7 ms / 0.95 minimum.
+
+| Approach | Browser | Language | Values | Gates |
+|---|---|---|---|---|
+| canvas-native | chromium | typescript | 74.00 / 8.10 / 7.10 / 1.00 | pass / pass / pass / pass |
+| canvas-native | chromium | python | 62.10 / 6.80 / 6.50 / 1.00 | pass / pass / pass / pass |
+| canvas-native | chromium | rust | 67.80 / 7.40 / 7.40 / 1.00 | pass / pass / pass / pass |
+| canvas-native | chromium | html | 68.20 / 2.10 / 7.60 / 1.00 | pass / pass / pass / pass |
+| canvas-native | webkit | typescript | 76.00 / 8.00 / 7.00 / 1.00 | pass / pass / pass / pass |
+| canvas-native | webkit | python | 63.00 / 3.00 / 8.00 / 1.00 | pass / pass / pass / pass |
+| canvas-native | webkit | rust | 74.00 / 7.00 / 8.00 / 1.00 | pass / pass / pass / pass |
+| canvas-native | webkit | html | 77.00 / 7.00 / 6.00 / 1.00 | pass / pass / pass / pass |
+| tree-sitter | chromium | typescript | 127.50 / 7.00 / 13.30 / 1.00 | pass / pass / pass / pass |
+| tree-sitter | chromium | python | 85.40 / 7.60 / 14.00 / 1.00 | pass / pass / pass / pass |
+| tree-sitter | chromium | rust | 110.50 / 7.10 / 9.40 / 1.00 | pass / pass / pass / pass |
+| tree-sitter | chromium | html | 104.10 / 7.70 / 25.70 / 1.00 | pass / pass / fail / pass |
+| tree-sitter | webkit | typescript | 99.00 / 5.00 / 14.00 / 1.00 | pass / pass / pass / pass |
+| tree-sitter | webkit | python | 73.00 / 5.00 / 17.00 / 1.00 | pass / pass / fail / pass |
+| tree-sitter | webkit | rust | 121.00 / 7.00 / 12.00 / 1.00 | pass / pass / pass / pass |
+| tree-sitter | webkit | html | 104.00 / 8.00 / 33.00 / 1.00 | pass / pass / fail / pass |
 
 ### 10.3 Incremental re-highlight after a key
 
-Per approach, per language, on Chromium and WebKit: p95 ms. The canvas-native row also records the `linesTokenized` p95.
+Canvas values are p95 milliseconds / lines tokenized; tree-sitter values are p95 parse plus capture-query milliseconds.
+
+| Browser | Language | Canvas ms / lines | Tree-sitter ms |
+|---|---|---|---|
+| chromium | typescript | 0.10 / 1.00 | 8.40 |
+| chromium | python | 0.10 / 1.00 | 10.80 |
+| chromium | rust | 0.10 / 1.00 | 4.00 |
+| chromium | html | 0.10 / 1.00 | 21.60 |
+| webkit | typescript | 0.00 / 1.00 | 8.00 |
+| webkit | python | 0.00 / 1.00 | 13.00 |
+| webkit | rust | 0.00 / 1.00 | 5.00 |
+| webkit | html | 0.00 / 1.00 | 30.00 |
 
 ### 10.4 Bundle size
 
-| Entry | baseline raw/gzip | after raw/gzip | delta |
+Raw / gzip bytes. New entries have no baseline; the core delta is zero. Registry size excludes lazy chunks.
+
+| Entry | Baseline raw / gzip | After raw / gzip | Gzip delta |
 |---|---|---|---|
-| `.` | | | |
-| `./engine` | | | |
-| `./json` | | | |
-| `./languages` | | | |
-| each `./languages/<id>` | | | |
+| `.` | 160599 / 42528 | 160599 / 42528 | 0 |
+| `./engine` | 158740 / 42723 | 158740 / 42723 | 0 |
+| `./json` | 2853 / 1387 | 2853 / 1387 | 0 |
+| `./diff` | 3011 / 1269 | 3011 / 1269 | 0 |
+| `./languages` | not present | 15239 / 4085 | new entry |
+| `./languages/actionscript` | not present | 6012 / 2403 | new entry |
+| `./languages/applescript` | not present | 4362 / 1842 | new entry |
+| `./languages/asp` | not present | 10447 / 3401 | new entry |
+| `./languages/bash` | not present | 5415 / 2216 | new entry |
+| `./languages/batch` | not present | 5505 / 2247 | new entry |
+| `./languages/bibtex` | not present | 4315 / 1829 | new entry |
+| `./languages/c` | not present | 6151 / 2456 | new entry |
+| `./languages/clojure` | not present | 5261 / 2147 | new entry |
+| `./languages/cpp` | not present | 6583 / 2600 | new entry |
+| `./languages/csharp` | not present | 6646 / 2518 | new entry |
+| `./languages/css` | not present | 4897 / 1975 | new entry |
+| `./languages/d` | not present | 6432 / 2482 | new entry |
+| `./languages/diff` | not present | 4096 / 1753 | new entry |
+| `./languages/dockerfile` | not present | 5893 / 2384 | new entry |
+| `./languages/dot` | not present | 6009 / 2396 | new entry |
+| `./languages/erb` | not present | 11135 / 3534 | new entry |
+| `./languages/erlang-html` | not present | 10978 / 3480 | new entry |
+| `./languages/erlang` | not present | 4598 / 1905 | new entry |
+| `./languages/fish` | not present | 5414 / 2217 | new entry |
+| `./languages/go` | not present | 6323 / 2481 | new entry |
+| `./languages/graphql` | not present | 6296 / 2473 | new entry |
+| `./languages/groovy` | not present | 6608 / 2525 | new entry |
+| `./languages/haml` | not present | 4189 / 1787 | new entry |
+| `./languages/haskell` | not present | 4875 / 1939 | new entry |
+| `./languages/hcl` | not present | 6869 / 2606 | new entry |
+| `./languages/html` | not present | 9397 / 3131 | new entry |
+| `./languages/ini` | not present | 4683 / 1975 | new entry |
+| `./languages/java` | not present | 6314 / 2487 | new entry |
+| `./languages/javascript` | not present | 7158 / 2601 | new entry |
+| `./languages/json` | not present | 1373 / 707 | new entry |
+| `./languages/jsp` | not present | 12787 / 4059 | new entry |
+| `./languages/jsx` | not present | 7221 / 2622 | new entry |
+| `./languages/kotlin` | not present | 6835 / 2562 | new entry |
+| `./languages/latex` | not present | 4353 / 1842 | new entry |
+| `./languages/lisp` | not present | 5116 / 2103 | new entry |
+| `./languages/lua` | not present | 4904 / 1890 | new entry |
+| `./languages/makefile` | not present | 4309 / 1844 | new entry |
+| `./languages/markdown` | not present | 4960 / 2057 | new entry |
+| `./languages/matlab` | not present | 4552 / 1901 | new entry |
+| `./languages/nix` | not present | 5216 / 1974 | new entry |
+| `./languages/objc` | not present | 6297 / 2466 | new entry |
+| `./languages/objcpp` | not present | 6407 / 2509 | new entry |
+| `./languages/ocaml` | not present | 4740 / 1897 | new entry |
+| `./languages/pascal` | not present | 6594 / 2539 | new entry |
+| `./languages/perl` | not present | 4522 / 1891 | new entry |
+| `./languages/php` | not present | 12758 / 4055 | new entry |
+| `./languages/plaintext` | not present | 227 / 171 | new entry |
+| `./languages/properties` | not present | 4919 / 2049 | new entry |
+| `./languages/protobuf` | not present | 6106 / 2454 | new entry |
+| `./languages/python` | not present | 4840 / 1983 | new entry |
+| `./languages/r` | not present | 4242 / 1816 | new entry |
+| `./languages/rd` | not present | 4071 / 1746 | new entry |
+| `./languages/regexp` | not present | 4217 / 1801 | new entry |
+| `./languages/restructuredtext` | not present | 4353 / 1827 | new entry |
+| `./languages/ruby` | not present | 4756 / 1982 | new entry |
+| `./languages/rust` | not present | 6465 / 2529 | new entry |
+| `./languages/scala` | not present | 6810 / 2553 | new entry |
+| `./languages/sql` | not present | 4407 / 1878 | new entry |
+| `./languages/svelte` | not present | 9900 / 3262 | new entry |
+| `./languages/swift` | not present | 6258 / 2453 | new entry |
+| `./languages/tcl-html` | not present | 10550 / 3419 | new entry |
+| `./languages/tcl` | not present | 4213 / 1822 | new entry |
+| `./languages/tex` | not present | 4114 / 1762 | new entry |
+| `./languages/textile` | not present | 4185 / 1784 | new entry |
+| `./languages/toml` | not present | 5210 / 2113 | new entry |
+| `./languages/tsx` | not present | 7221 / 2624 | new entry |
+| `./languages/typescript` | not present | 7242 / 2623 | new entry |
+| `./languages/vue` | not present | 9781 / 3241 | new entry |
+| `./languages/xml` | not present | 5064 / 2108 | new entry |
+| `./languages/yaml` | not present | 4727 / 1987 | new entry |
+| `./languages/zig` | not present | 6057 / 2410 | new entry |
+
+All 71 language entries meet their 6 KiB limits (12 KiB for embedding hosts); the registry is 4085 bytes gzip and the core delta is 0 bytes.
 
 ### 10.5 Embedding, licensing and maintenance
 
-- **Embedding.** Compare the canvas composite state with tree-sitter injection queries, using results from the section 9.2 tests and the html comparison row.
-- **Licensing.** All emaki grammars are emaki-authored (MIT). No Sublime, TextMate, tree-sitter or chilla grammar text is copied. `THIRD_PARTY_NOTICES.md` records:
-  - the references consulted but not copied (the Sublime default packages, chilla's Swift and Nix grammars)
-  - the spike's grammar licenses, for comparison only, since they are not shipped
-- **Maintenance.** Lines of code per canvas module and factory, compared with the tree-sitter upkeep items.
+- Canvas embedding: `npx vitest run test/language/embedded.test.ts` passed 3 tests; composite string state uses the existing checkpoints. Tree-sitter uses the HTML injection query and JavaScript/CSS parsers over included ranges. The HTML rows above measure that spike implementation.
+- Emaki grammars are original MIT work. References and comparison-only MIT-compatible packages are listed in `THIRD_PARTY_NOTICES.md`; none of the spike packages is shipped.
+- Canvas maintenance: per-file line counts and total from `wc -l` are below. Tree-sitter requires runtime/grammar ABI pinning, wasm assets, highlight queries, and injection handling.
+
+```
+      88 src/language/grammar.ts
+      20 src/language/families/c-like.ts
+       5 src/language/families/ini-like.ts
+      10 src/language/families/lisp-like.ts
+       8 src/language/families/markup-like.ts
+      11 src/language/families/shell-like.ts
+       4 src/language/langs/actionscript.ts
+       4 src/language/langs/applescript.ts
+       8 src/language/langs/asp.ts
+       3 src/language/langs/bash.ts
+       5 src/language/langs/batch.ts
+       5 src/language/langs/bibtex.ts
+       4 src/language/langs/c.ts
+       4 src/language/langs/clojure.ts
+       4 src/language/langs/cpp.ts
+       4 src/language/langs/csharp.ts
+      30 src/language/langs/css.ts
+       4 src/language/langs/d.ts
+       2 src/language/langs/diff.ts
+       8 src/language/langs/dockerfile.ts
+       8 src/language/langs/dot.ts
+       4 src/language/langs/erb.ts
+       4 src/language/langs/erlang-html.ts
+      10 src/language/langs/erlang.ts
+       5 src/language/langs/fish.ts
+       4 src/language/langs/go.ts
+      10 src/language/langs/graphql.ts
+       8 src/language/langs/groovy.ts
+       2 src/language/langs/haml.ts
+      12 src/language/langs/haskell.ts
+       8 src/language/langs/hcl.ts
+       5 src/language/langs/html.ts
+       4 src/language/langs/ini.ts
+      10 src/language/langs/java.ts
+      35 src/language/langs/javascript.ts
+       1 src/language/langs/json.ts
+       6 src/language/langs/jsp.ts
+       4 src/language/langs/jsx.ts
+       9 src/language/langs/kotlin.ts
+       5 src/language/langs/latex.ts
+       4 src/language/langs/lisp.ts
+       5 src/language/langs/lua.ts
+       4 src/language/langs/makefile.ts
+      15 src/language/langs/markdown.ts
+      10 src/language/langs/matlab.ts
+      14 src/language/langs/nix.ts
+       4 src/language/langs/objc.ts
+       4 src/language/langs/objcpp.ts
+      11 src/language/langs/ocaml.ts
+       4 src/language/langs/pascal.ts
+       6 src/language/langs/perl.ts
+       8 src/language/langs/php.ts
+       2 src/language/langs/plaintext.ts
+       4 src/language/langs/properties.ts
+       9 src/language/langs/protobuf.ts
+      11 src/language/langs/python.ts
+       4 src/language/langs/r.ts
+       2 src/language/langs/rd.ts
+       4 src/language/langs/regexp.ts
+       6 src/language/langs/restructuredtext.ts
+       8 src/language/langs/ruby.ts
+       4 src/language/langs/rust.ts
+       8 src/language/langs/scala.ts
+       4 src/language/langs/sql.ts
+      12 src/language/langs/svelte.ts
+       4 src/language/langs/swift.ts
+       4 src/language/langs/tcl-html.ts
+       4 src/language/langs/tcl.ts
+       7 src/language/langs/tex.ts
+       5 src/language/langs/textile.ts
+       4 src/language/langs/toml.ts
+       4 src/language/langs/tsx.ts
+       4 src/language/langs/typescript.ts
+      11 src/language/langs/vue.ts
+      10 src/language/langs/xml.ts
+       8 src/language/langs/yaml.ts
+       4 src/language/langs/zig.ts
+      12 src/language/templates/html-template.ts
+     633 total
+```
 
 ### 10.6 Decision rationale
 
-Confirm or reopen per section 3.3, citing rows from 10.1 to 10.5.
+Confirmed under §3.3: both approaches have measured rows in §§10.1–10.3; canvas passes all four comparison-language browser gates; the per-language and core bundle limits pass. The tree-sitter runtime and grammar wasm in §10.1 are substantially larger, and its parsing and query costs in §§10.2–10.3 add integration and injection maintenance described in §10.5. The canvas-native choice avoids shipped wasm and asynchronous initialization while meeting the measured gates.
 
 ## 11. Rollout and compatibility
 

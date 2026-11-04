@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!-- example -->
+<project name="demo">
+<target name="build">
+<echo message="hello"/>
+<mkdir dir="output"/>
+<copy todir="output">
+  <fileset basedir="src">
+    <include name="**/*.txt"/>
+  </fileset>
+</copy>
+</target>
+<target name="clean">
+  <delete dir="output"/>
+</target>
+<target name="test" depends="build">
+  <echo message="testing"/>
+</target>
+<property name="configuration" value="debug"/>
+<description>Example build</description>
+</project>

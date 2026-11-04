@@ -13,6 +13,7 @@ export default defineConfig({
         new URL('./examples/plugin-showcase/index.html', import.meta.url).pathname,
         new URL('./examples/json-10k/index.html', import.meta.url).pathname,
         new URL('./examples/diff/index.html', import.meta.url).pathname,
+        new URL('./examples/languages/index.html', import.meta.url).pathname,
       ],
     },
   },

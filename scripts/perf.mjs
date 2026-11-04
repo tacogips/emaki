@@ -11,7 +11,7 @@ const p95 = xs => xs.length ? [...xs].sort((a, b) => a - b)[Math.ceil(xs.length 
 const scaleBudget = x => Math.max(2 * x, x + 2);
 const gate = (browser, name, value, budget, pass = value !== null && value <= budget) => ({ browser, name, value, budget, pass });
 function random(seed) { return () => { seed |= 0; seed = seed + 0x6d2b79f5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const args = process.argv.slice(2), options = { browser: 'all', sizes: '1000,10000,100000', loads: '5', keys: '200', edits: '100', out: `perf-results/${new Date().toISOString().replaceAll(':', '-')}` };
+const args = process.argv.slice(2), options = { suite: 'all', dist: 'dist', langs: 'typescript,python,rust,c,markdown,html,css,yaml', browser: 'all', sizes: '1000,10000,100000', loads: '5', keys: '200', edits: '100', out: `perf-results/${new Date().toISOString().replaceAll(':', '-')}` };
 let selfTest = false;
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--self-test') { selfTest = true; continue; }
@@ -24,10 +24,10 @@ if (selfTest) {
   console.log(ok ? 'self-test passed' : 'self-test failed'); process.exit(ok ? 0 : 1);
 }
 const sizes = options.sizes.split(',').map(Number), loads = Number(options.loads), keys = Number(options.keys), edits = Number(options.edits);
-if (!['all', 'chromium', 'webkit'].includes(options.browser) || !sizes.length || sizes.some(n => ![1000, 10000, 100000].includes(n)) || [loads, keys, edits].some(n => !Number.isInteger(n) || n < 1)) { console.error('Invalid options'); process.exit(2); }
-if (!distReady('dist/json-10k') || !distReady('dist/diff')) { console.error('dist missing; run npm run build'); process.exit(2); }
+if (!['all', 'json', 'langs'].includes(options.suite) || !options.langs.split(',').every(id => /^[a-z0-9-]+$/.test(id)) || !['all', 'chromium', 'webkit'].includes(options.browser) || !sizes.length || sizes.some(n => ![1000, 10000, 100000].includes(n)) || [loads, keys, edits].some(n => !Number.isInteger(n) || n < 1)) { console.error('Invalid options'); process.exit(2); }
+if ((options.suite !== 'langs' && (!distReady(resolve(options.dist, 'json-10k')) || !distReady(resolve(options.dist, 'diff')))) || (options.suite !== 'json' && !distReady(resolve(options.dist, 'languages')))) { console.error('dist missing; run npm run build'); process.exit(2); }
 const out = resolve(options.out); mkdirSync(out, { recursive: true });
-const env = { os: { platform: platform(), release: release(), arch: arch() }, cpu: cpus().map(c => c.model), loadavgBefore: loadavg(), browsers: {}, scrollPaths: {}, distSha256: createHash('sha256').update(readFileSync('dist/json-10k/index.html')).digest('hex'), gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() };
+const env = { os: { platform: platform(), release: release(), arch: arch() }, cpu: cpus().map(c => c.model), loadavgBefore: loadavg(), browsers: {}, scrollPaths: {}, distSha256: createHash('sha256').update(readFileSync(resolve(options.dist, options.suite === 'langs' ? 'languages/index.html' : 'json-10k/index.html'))).digest('hex'), gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim() };
 const gates = []; let unavailable = false;
 const frame = page => page.evaluate(() => new Promise(r => requestAnimationFrame(() => r())));
 const write = (file, sample) => appendFileSync(resolve(out, file), JSON.stringify(sample) + '\n');
@@ -37,7 +37,8 @@ for (const name of options.browser === 'all' ? ['chromium', 'webkit'] : [options
     browser = await (name === 'chromium' ? chromium : webkit).launch(name === 'chromium' ? { args: ['--mute-audio', '--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] } : {});
     env.browsers[name] = browser.version();
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 });
-    await routeDist(context, 'dist');
+    await routeDist(context, options.dist);
+    if (options.suite !== 'langs') {
     const keyP95 = {};
     for (const size of sizes) {
       const file = `raw-${name}-${size}.jsonl`; writeFileSync(resolve(out, file), '');
@@ -91,6 +92,47 @@ for (const name of options.browser === 'all' ? ['chromium', 'webkit'] : [options
         write(file, { metric: 'diffLatencyMs', value: sample, revision });
       }
       const values = readFileSync(resolve(out, file), 'utf8').trim().split('\n').map(line => JSON.parse(line).value); const val = p95(values.filter(v => v !== null)); gates.push(gate(name, 'diffLatencyP95', val, 100, values.length === edits && values.every(v => v !== null) && val !== null && val <= 100)); await page.close();
+    }
+    }
+    if (options.suite !== 'json') for (const id of options.langs.split(',')) {
+      const file = `raw-lang-${name}-${id}.jsonl`; writeFileSync(resolve(out, file), '');
+      let page, paints = [];
+      for (let i = 0; i < loads; i++) {
+        if (page) await page.close(); page = await context.newPage();
+        await page.goto(`${ORIGIN}/languages/index.html?lang=${encodeURIComponent(id)}&lines=10000&autoload=0`);
+        await page.waitForFunction(() => !!window.__emakiPerf);
+        const loadMs = await page.evaluate(() => window.__emakiLang.loadMs); write(file, { metric: 'loadMs', value: loadMs });
+        const sample = await page.evaluate(() => window.__emakiPerf.load()); paints.push(sample.firstPaintMs); write(file, { metric: 'firstPaintMs', value: sample.firstPaintMs, load: i });
+      }
+      gates.push(gate(name, `firstPaintMs@${id}`, Math.max(...paints), 200));
+      await page.locator('#editor canvas').hover();
+      await page.evaluate(() => window.__emakiPerf.startRecording());
+      const initialTop = await page.evaluate(() => window.__emakiPerf.info().scrollTop); let path = 'wheel';
+      for (let i = 0; i < 300; i++) {
+        if (path === 'wheel') await page.mouse.wheel(0, 120); else await page.evaluate(() => window.__emakiPerf.scrollBy(120));
+        await frame(page);
+        if (i === 9 && await page.evaluate(() => window.__emakiPerf.info().scrollTop) <= initialTop) path = 'scrollBy';
+      }
+      env.scrollPaths[`${name}-${id}`] = path;
+      const scroll = await page.evaluate(() => window.__emakiPerf.stopRecording());
+      scroll.presents.forEach((p, i) => { write(file, { metric: 'scrollWorkMs', value: p.workMs, frame: i }); if (i) write(file, { metric: 'rafIntervalMs', value: p.frameStart - scroll.presents[i - 1].frameStart, frame: i }); });
+      gates.push(gate(name, `scrollWorkP95@${id}`, p95(scroll.presents.map(p => p.workMs)), 16.7));
+      await page.evaluate(() => window.__emakiPerf.startRecording()); const rng = random(7);
+      for (let i = 0; i < keys; i++) {
+        const target = await page.evaluate(() => { const e = document.querySelector('#editor canvas'); const info = window.__emakiPerf.info(); return { first: Math.floor(info.scrollTop / 18) + 1, count: Math.max(1, Math.floor(e.clientHeight / 18) - 1), lines: info.lines }; });
+        const line = Math.min(target.lines, target.first + Math.floor(rng() * target.count));
+        await page.evaluate(line => window.__emakiPerf.caretToLine(line, 2), line); await frame(page); await frame(page);
+        await page.evaluate(() => window.__emakiLang.resetCounters());
+        await page.keyboard.press(String.fromCharCode(97 + Math.floor(rng() * 26))); await frame(page); await frame(page); await frame(page);
+        write(file, { metric: 'rehighlight', ...await page.evaluate(() => window.__emakiLang.counters()) });
+      }
+      const metrics = await page.evaluate(() => { const r = window.__emakiPerf.stopRecording(); return window.__emakiPerf.keyMetrics(r.inputs, r.presents); });
+      metrics.forEach((m, i) => write(file, { metric: 'key', value: m.b, rawLatencyMs: m.a, nextFrame: m.nextFrame, missing: m.missing, key: i }));
+      const work = p95(metrics.filter(m => !m.missing).map(m => m.b));
+      gates.push(gate(name, `keyWorkP95@${id}`, work, 16.7, metrics.length === keys && metrics.every(m => !m.missing) && work !== null && work <= 16.7));
+      const ratio = metrics.filter(m => m.nextFrame).length / keys; gates.push(gate(name, `nextFrameRatio@${id}`, ratio, .95, metrics.length === keys && ratio >= .95));
+      write(file, { metric: 'longLineMs', value: await page.evaluate(() => window.__emakiLang.longLineMs(100000)) });
+      await page.close();
     }
     await context.close();
   } catch (error) { unavailable = true; console.error(`${name}: ${error.stack || error}`); }

@@ -1,0 +1,4 @@
+import { compileGrammar } from '../grammar';
+import { cLike } from '../families/c-like';
+
+export const pascalLanguage = compileGrammar(cLike({ name: 'pascal', keywords: ["begin", "end", "program", "var", "integer", "procedure", "function", "if", "then", "else", "while", "do"], charQuote: false, nestedComments: false, blockComment: null, strings: [], extra: { root: [{ match: /\{/, tag: 'comment', push: 'braceComment' }, { match: /\(\*/, tag: 'comment', push: 'pascalComment' }, { match: /'(?:''|[^'])*'/, tag: 'string' }, { match: /\b(?:begin|end|program|var|integer|procedure|function|if|then|else|while|do)\b/i, tag: 'keyword' }], states: { braceComment: [{ match: /\}/, tag: 'comment', pop: true }, { match: /./, tag: 'comment' }], pascalComment: [{ match: /\*\)/, tag: 'comment', pop: true }, { match: /./, tag: 'comment' }] } } }));

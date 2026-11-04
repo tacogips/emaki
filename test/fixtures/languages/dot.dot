@@ -1,0 +1,20 @@
+// note
+digraph Network {
+  node [label="start"];
+  edge [weight=1];
+  a -> b;
+  a -- c;
+  subgraph cluster_one {
+    b -> c;
+  }
+  /* comment */
+  # other
+}
+// sample line 0
+// sample line 1
+// sample line 2
+// sample line 3
+// sample line 4
+// sample line 5
+// sample line 6
+// sample line 7

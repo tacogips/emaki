@@ -10,13 +10,16 @@
   "files": [
     "src",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "exports": {
     ".": "./src/index.ts",
     "./engine": "./src/engine.ts",
     "./diff": "./src/diff/index.ts",
-    "./json": "./src/language/json.ts"
+    "./json": "./src/language/json.ts",
+    "./languages": "./src/language/registry.ts",
+    "./languages/*": "./src/language/langs/*.ts"
   },
   "scripts": {
     "check": "tsc --noEmit",

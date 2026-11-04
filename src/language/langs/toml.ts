@@ -1,0 +1,4 @@
+import { compileGrammar } from '../grammar';
+import { iniLike } from '../families/ini-like';
+const base = iniLike({ name: 'toml', comments: ['#'], sections: /^\s*\[\[[^\]]+\]\]|^\s*\[[^\]]+\]/, keyValue: /^\s*([\w.-]+)\s*(=)/, valueRules: [{ match: /"""/, tag: 'string', push: 'basic' }, { match: /'''/, tag: 'string', push: 'literal' }, { match: /"(?:\\.|[^"])*"|'[^']*'/, tag: 'string' }, { match: /\b\d{4}-\d\d-\d\dT[\d:]+Z\b/, tag: 'number' }, { match: /\b\d+(?:\.\d+)?\b/, tag: 'number' }, { match: /\b(?:true|false)\b/, tag: 'constant' }, { match: /\b(?:inf|nan)\b/, tag: 'keyword' }] });
+export const tomlLanguage = compileGrammar({ ...base, states: { ...base.states, basic: [{ match: /"""/, tag: 'string', pop: true }, { match: /./, tag: 'string' }], literal: [{ match: /'''/, tag: 'string', pop: true }, { match: /./, tag: 'string' }] } });

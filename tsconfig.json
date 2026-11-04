@@ -23,5 +23,6 @@
     "examples",
     "vite.config.ts",
     "vitest.config.ts"
-  ]
+  ],
+  "exclude": ["test/fixtures/languages"]
 }
