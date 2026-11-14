@@ -1,0 +1,241 @@
+{
+  "taskId": "tauri-editor-20261110",
+  "workflowMode": "issue-resolution",
+  "implementationBranch": "main",
+  "baseBranch": "main",
+  "remote": "origin",
+  "originalHead": "1d1ac8106b7e43368506a25d1a81c8cfd363d8b1",
+  "designDocPaths": ["design-docs/specs/design-tauri-editor.md"],
+  "overviewPlanPath": "impl-plans/active/tauri-editor-00-overview.md",
+  "evidenceRoot": "tmp/tauri-editor-20261110",
+  "gitPolicy": "No push. Plan workers make no branches, worktrees, stashes or commits. Workflow finalization makes one local commit. Never commit src-tauri/target, src-tauri/gen, node_modules or dist.",
+  "serialReconciliation": {
+    "gate": "After all plans join, reconcile serially re-runs the root gates and the subproject/Rust/native gates with logs under tmp/tauri-editor-20261110/reconcile.",
+    "commands": [
+      "npm run check && npm test && npm run build",
+      "cd examples/tauri-editor && npm run check && npm run build && npm run smoke",
+      "cd examples/tauri-editor/src-tauri && ~/.cargo/bin/cargo check && ~/.cargo/bin/cargo clippy -- -D warnings && ~/.cargo/bin/cargo test",
+      "cd examples/tauri-editor && npx tauri build --debug --no-bundle",
+      "git diff --stat origin/main -- package.json package-lock.json",
+      "git status --porcelain --ignored examples/tauri-editor"
+    ]
+  },
+  "reviewContext": {
+    "issueReference": "none (local workflowInput request; workflow execution opus-terra-design-and-implement-review-loop-session-795)",
+    "userProblem": "Add a standalone Tauri 2 desktop editor example built on emaki under examples/tauri-editor/. It launches as a native window and edits real files on disk with emaki syntax highlighting.",
+    "requiredOutcomes": [
+      "npm run tauri dev launches a native window with an emaki WebGL2 editor filling the window.",
+      "New/Open/Save/Save As shortcuts; a CLI path opens on launch; the title shows the file name and a dirty marker; confirm before discarding on New/Open/close.",
+      "Lazy resolveLanguage + loadLanguage detection with plaintext fallback; a status bar with language, line/col and an override select listing all registry languages; defaultTokenColors.",
+      "Subproject npm run check and npm run build pass.",
+      "cargo check, clippy -D warnings and cargo test pass, with read/write round trip, missing-file and UTF-8 tests.",
+      "A Playwright mocked-IPC smoke covers open -> edit -> save and language detection; a tauri build --debug --no-bundle log shows the binary builds.",
+      "README section; root check/test/build stay green."
+    ],
+    "nonGoals": [
+      "Multi-tab or multi-window editing, find/replace, settings.",
+      "CRLF preservation (saved as LF) and non-UTF-8 encoding detection (rejected).",
+      "Bundled installers or signing; only --no-bundle is verified.",
+      "AppManifest command allow-list, atomic writes, undo history across remounts.",
+      "Any change to emaki src/, root package.json/package-lock.json, vactr or chilla."
+    ],
+    "constraints": [
+      "Do not modify vactr or chilla; chilla/src-tauri is a read-only reference.",
+      "Root package gains no Tauri dependency; @codemirror/state and @codemirror/commands remain the only peers.",
+      "Tauri packages live only in examples/tauri-editor/package.json.",
+      "Root npm run check, npm test and npm run build stay green; the subproject is excluded from root tsc/vite scopes.",
+      "File IO only through read_text_file/write_text_file Rust commands; tauri-plugin-dialog for dialogs; no fs plugin; strict CSP.",
+      "Use ~/.cargo/bin/cargo; commit Cargo.lock; never commit src-tauri/target or gen/.",
+      "Terse framework-free TypeScript in emaki style.",
+      "Do not push."
+    ],
+    "designDecisionsAndRationale": [
+      {"decision": "Dialogs run Rust-side and read/write accept only paths granted via the CLI argument or a dialog.", "rationale": "No fs plugin and no dialog:* permissions; the webview cannot read arbitrary paths (design §5, §11.1)."},
+      {"decision": "emaki is consumed through Vite aliases and TS paths to ../../src.", "rationale": "One CodeMirror instance, no built dist needed, no root lockfile change (design §4, §11.2)."},
+      {"decision": "The editor is remounted on Open/New/language override.", "rationale": "emaki fixes the language at creation; no library change needed (design §11.3)."},
+      {"decision": "Save completion is conditional on a docId+rev snapshot (TAURI-DESIGN-001).", "rationale": "Edits made during a pending write stay dirty and are never discarded (design §7)."},
+      {"decision": "CLI path via a custom initial_path command.", "rationale": "Avoids tauri-plugin-cli (design §11.4)."},
+      {"decision": "Smoke is a Node script using playwright with an in-process Vite server in mode 'mock'.", "rationale": "Matches root scripts/e2e.mjs, owns its lifecycle, adds no @playwright/test (design §11.5)."},
+      {"decision": "Evidence root is tmp/tauri-editor-20261110 with per-plan subdirectories.", "rationale": "Checkpoint aligned the accepted plans' tmp/tauri-editor paths to tmp/<taskId>; a mechanical path rename with no behavior change."}
+    ],
+    "intentionalTradeoffs": [
+      "Native GUI cannot be asserted headlessly; P05 records a best-effort launch and reports the GUI as not observed.",
+      "The tauri crate / @tauri-apps/api major.minor alignment is done via Cargo.lock only (C6) by P05.",
+      "P01 copies icon.png in addition to the 5 bundle.icon files and has 6 Rust tests (a superset of the design's 5).",
+      "README `npm run tauri dev -- -- path/to/file` forwarding is documented but not verified; CLI-path behavior is evidenced by launching the binary directly."
+    ],
+    "supportedEdgeCases": [
+      "Edits during a pending write keep the document dirty and show 'Saved (newer edits unsaved)'.",
+      "Write error leaves path, language, dirty flag and text unchanged.",
+      "Save As cancel changes nothing.",
+      "Unknown file extensions fall back to plaintext; loadLanguage failure mounts plaintext.",
+      "Missing file and invalid UTF-8 produce distinct error strings; ungranted paths are rejected.",
+      "Stale language loads are discarded by a mount token."
+    ],
+    "outOfScopeEdgeCases": [
+      "CRLF round-trip preservation.",
+      "Non-UTF-8 file editing.",
+      "Very large files / size limits.",
+      "Atomic or crash-safe writes."
+    ],
+    "sourcePaths": [
+      "design-docs/specs/design-tauri-editor.md",
+      "impl-plans/active/tauri-editor-00-overview.md",
+      "impl-plans/active/tauri-editor-p01-native.md",
+      "impl-plans/active/tauri-editor-p02-frontend.md",
+      "impl-plans/active/tauri-editor-p03-root-wiring.md",
+      "impl-plans/active/tauri-editor-p04-smoke.md",
+      "impl-plans/active/tauri-editor-p05-native-build.md"
+    ],
+    "residualRisks": [
+      "A GUI window cannot be asserted headlessly; P05 records best-effort launch evidence and states that the GUI was not observed.",
+      "The tauri crate / @tauri-apps/api major.minor may mismatch; P05 aligns them via Cargo.lock only or records a blocker.",
+      "A first Rust compile and network installs are slow; long foreground timeouts are needed."
+    ]
+  },
+  "plans": [
+    {
+      "planId": "tauri-editor-p01-native",
+      "planPath": "impl-plans/active/tauri-editor-p01-native.md",
+      "dependsOn": [],
+      "writePaths": [
+        "examples/tauri-editor/src-tauri/Cargo.toml",
+        "examples/tauri-editor/src-tauri/Cargo.lock",
+        "examples/tauri-editor/src-tauri/build.rs",
+        "examples/tauri-editor/src-tauri/tauri.conf.json",
+        "examples/tauri-editor/src-tauri/capabilities/default.json",
+        "examples/tauri-editor/src-tauri/icons",
+        "examples/tauri-editor/src-tauri/src/main.rs",
+        "examples/tauri-editor/src-tauri/src/lib.rs",
+        "examples/tauri-editor/src-tauri/target",
+        "examples/tauri-editor/src-tauri/gen",
+        "tmp/tauri-editor-20261110/tauri-editor-p01-native",
+        "impl-plans/progress/tauri-editor-p01-native.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": [
+        "examples/tauri-editor/src-tauri/target",
+        "examples/tauri-editor/src-tauri/gen",
+        "tmp/tauri-editor-20261110/tauri-editor-p01-native"
+      ],
+      "acceptanceCriteria": [
+        "The six C1 commands are implemented as async commands; read/write reject ungranted paths with 'path not permitted: '.",
+        "The CSP and devCsp match design §6; capabilities contain exactly the 4 listed permissions.",
+        "cargo fmt --check, check, clippy -D warnings and test exit 0; 6 tests pass.",
+        "icons/ holds the 6 generated original icons; Cargo.lock exists; the progress log records the resolved tauri version."
+      ],
+      "verification": [
+        "cd examples/tauri-editor/src-tauri && ~/.cargo/bin/cargo fmt --check && ~/.cargo/bin/cargo check && ~/.cargo/bin/cargo clippy -- -D warnings && ~/.cargo/bin/cargo test"
+      ]
+    },
+    {
+      "planId": "tauri-editor-p02-frontend",
+      "planPath": "impl-plans/active/tauri-editor-p02-frontend.md",
+      "dependsOn": [],
+      "writePaths": [
+        "examples/tauri-editor/package.json",
+        "examples/tauri-editor/package-lock.json",
+        "examples/tauri-editor/tsconfig.json",
+        "examples/tauri-editor/vite.config.ts",
+        "examples/tauri-editor/index.html",
+        "examples/tauri-editor/style.css",
+        "examples/tauri-editor/src/main.ts",
+        "examples/tauri-editor/src/env.d.ts",
+        "examples/tauri-editor/src/mock-ipc.ts",
+        "examples/tauri-editor/node_modules",
+        "examples/tauri-editor/dist",
+        "tmp/tauri-editor-20261110/tauri-editor-p02-frontend",
+        "impl-plans/progress/tauri-editor-p02-frontend.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": [
+        "examples/tauri-editor/node_modules",
+        "examples/tauri-editor/dist",
+        "tmp/tauri-editor-20261110/tauri-editor-p02-frontend"
+      ],
+      "acceptanceCriteria": [
+        "npm run check and npm run build exit 0 in examples/tauri-editor.",
+        "dist contains no mockIPC/__tauriEditorMock and index.html has no inline script/style.",
+        "Save/Save As follow the docId+rev conditional completion; the C4 DOM ids and C5 mock API exist.",
+        "Exact version pins; root package.json and package-lock.json are unchanged."
+      ],
+      "verification": [
+        "cd examples/tauri-editor && npm run check && npm run build && ! rg -l 'mockIPC|__tauriEditorMock' dist"
+      ]
+    },
+    {
+      "planId": "tauri-editor-p03-root-wiring",
+      "planPath": "impl-plans/active/tauri-editor-p03-root-wiring.md",
+      "dependsOn": [],
+      "writePaths": [
+        "tsconfig.json",
+        "vite.config.ts",
+        ".gitignore",
+        "README.md",
+        "tmp/tauri-editor-20261110/tauri-editor-p03-root-wiring",
+        "dist",
+        "node_modules/.vite",
+        "impl-plans/progress/tauri-editor-p03-root-wiring.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/tauri-editor-20261110/tauri-editor-p03-root-wiring", "dist", "node_modules/.vite"],
+      "acceptanceCriteria": [
+        "The root tsconfig excludes examples/tauri-editor; root vite optimizeDeps.entries equals the 5 build inputs and the watcher ignores tauri-editor/src-tauri.",
+        ".gitignore ignores src-tauri/target/ and gen/.",
+        "README has a 'Tauri standalone editor' section with the six listed topics.",
+        "Root npm run check, npm test and npm run build exit 0; the dist file list is unchanged."
+      ],
+      "verification": ["npm run check && npm test && npm run build"]
+    },
+    {
+      "planId": "tauri-editor-p04-smoke",
+      "planPath": "impl-plans/active/tauri-editor-p04-smoke.md",
+      "dependsOn": ["tauri-editor-p02-frontend"],
+      "writePaths": [
+        "examples/tauri-editor/scripts/smoke.mjs",
+        "examples/tauri-editor/node_modules",
+        "tmp/tauri-editor-20261110/tauri-editor-p04-smoke",
+        "impl-plans/progress/tauri-editor-p04-smoke.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": [
+        "examples/tauri-editor/node_modules",
+        "tmp/tauri-editor-20261110/tauri-editor-p04-smoke"
+      ],
+      "acceptanceCriteria": [
+        "npm run smoke exits 0 with failed=0, covering design §8 steps 3-9, including the deferred-write regression, write error, Save As cancel, plaintext fallback and option count.",
+        "The script owns and closes its Vite server and browser."
+      ],
+      "verification": ["cd examples/tauri-editor && npm run smoke"]
+    },
+    {
+      "planId": "tauri-editor-p05-native-build",
+      "planPath": "impl-plans/active/tauri-editor-p05-native-build.md",
+      "dependsOn": ["tauri-editor-p01-native", "tauri-editor-p02-frontend", "tauri-editor-p03-root-wiring"],
+      "writePaths": [
+        "impl-plans/progress/tauri-editor-p05-native-build.md",
+        "tmp/tauri-editor-20261110/tauri-editor-p05-native-build",
+        "examples/tauri-editor/src-tauri/target",
+        "examples/tauri-editor/src-tauri/gen",
+        "examples/tauri-editor/dist"
+      ],
+      "sharedPaths": ["examples/tauri-editor/src-tauri/Cargo.lock"],
+      "sharedPathNotes": [
+        {"path": "examples/tauri-editor/src-tauri/Cargo.lock", "intendedEdit": "Only cargo update -p tauri --precise to align the tauri major.minor with @tauri-apps/api (C6), with pre and post sha256 recorded; otherwise untouched."}
+      ],
+      "artifactRoots": [
+        "tmp/tauri-editor-20261110/tauri-editor-p05-native-build",
+        "examples/tauri-editor/src-tauri/target",
+        "examples/tauri-editor/src-tauri/gen",
+        "examples/tauri-editor/dist"
+      ],
+      "acceptanceCriteria": [
+        "npx tauri build --debug --no-bundle exits 0 with a complete log and src-tauri/target/debug/emaki-tauri-editor exists.",
+        "The production dist has no mock code.",
+        "The best-effort launch is recorded honestly (alive 8 s or a blocked reason; GUI not observed); no leftover processes.",
+        "The root package files are unchanged; target/ and gen/ are ignored, and the lockfiles are not ignored."
+      ],
+      "verification": ["cd examples/tauri-editor && npx tauri build --debug --no-bundle"]
+    }
+  ]
+}

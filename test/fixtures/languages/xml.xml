@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!-- example -->
+<root id="hello">
+<![CDATA[hello]]>
+<child name="value"/>
+<items>
+  <item id="one">First</item>
+  <item id="two">Second</item>
+  <item id="three">Third</item>
+</items>
+<description><![CDATA[More
+content across lines]]></description>
+<settings>
+  <option name="enabled">true</option>
+  <option name="count">12</option>
+</settings>
+<links>
+  <link href="./next.xml"/>
+</links>
+<!-- End of document -->
+</root>

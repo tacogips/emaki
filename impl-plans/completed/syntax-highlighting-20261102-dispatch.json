@@ -1,0 +1,388 @@
+{
+  "taskId": "syntax-highlighting-20261102",
+  "workflowMode": "issue-resolution",
+  "implementationBranch": "main",
+  "baseBranch": "main",
+  "remote": "origin",
+  "originalHead": "1de212ff9dbb29ddf90fd8cf7a6b15a9bae5b7c6",
+  "designDocPaths": [
+    "design-docs/specs/design-syntax-highlighting.md",
+    "design-docs/user-qa/syntax-highlighting-qa.md"
+  ],
+  "overviewPlanPath": "impl-plans/active/syntax-00-overview.md",
+  "evidenceRoot": "tmp/syntax-highlighting-20261102",
+  "gitPolicy": "No push. Plan workers make no branches, worktrees, stashes or commits; P00 may only run the read-only git archive. Workflow finalization makes one local commit in the numbered 1-6 commit-message style.",
+  "serialReconciliation": {
+    "gate": "syntax-p09-registry-integration serially enforces exit 0 for npm run check and npm test (boundary included). Reconcile/finalization re-runs check, test, build, perf (Chromium and WebKit), e2e and the bundle-size comparison.",
+    "commands": [
+      "npm run check",
+      "npm test",
+      "npm run build",
+      "npm run perf",
+      "npm run e2e",
+      "node scripts/bundle-size.mjs --entries all"
+    ]
+  },
+  "reviewContext": {
+    "issueReference": "none (no GitHub issue supplied; intake normalized from runtimeVariables.workflowInput; workflow execution opus-terra-design-and-implement-review-loop-session-633; plan-review communication comm-012411)",
+    "userProblem": "emaki highlights only JSON. It needs syntax highlighting for at least chilla's language inventory plus selected additions. The choice between tree-sitter, canvas-native line tokenizers and a hybrid must be explicit and measured.",
+    "requiredOutcomes": [
+      "The design document records the approach decision with the measured comparison and maps all 85 chilla inventory entries (covered, or excluded with a reason).",
+      "Every non-excluded chilla language and every added language (typescript, tsx, jsx, vue, svelte, fish) highlights real tokens, verified by per-language fixture tests.",
+      "A selection API resolves languages by name, extension, filename and Markdown fence info string, with tests.",
+      "Embedded languages work in Markdown fences and HTML script/style, and also in PHP, server templates, Vue and Svelte.",
+      "npm run check, npm test and npm run build pass, and existing tests still pass.",
+      "scripts/perf includes per-language fixtures. The Chromium and WebKit budgets (first paint, scroll p95, key p95) pass, with results recorded.",
+      "The core entry bundle size is measured before and after and does not grow materially (at most 0.25 KB gzip).",
+      "The README documents the languages, the selection API, lazy loading and theme tags.",
+      "THIRD_PARTY_NOTICES.md records grammar licensing."
+    ],
+    "nonGoals": [
+      "Shipping tree-sitter in emaki. The spike is evidence only and lives outside the repo.",
+      "TextMate scope parity.",
+      "Swapping the language at runtime on a live editor.",
+      "A public grammar-authoring API. grammar.ts and the families stay internal.",
+      "Semantic or type resolution, CommonMark-complete parsing, SCSS/Less grammars, and Svelte nested-brace expressions."
+    ],
+    "constraints": [
+      "/Users/taco/gits/tacogips/vactr and /Users/taco/gits/tacogips/chilla are read-only and must not be modified.",
+      "emaki stays framework-independent with no vactr- or chilla-specific code. @codemirror/state and @codemirror/commands remain the only peer dependencies, and no dependencies are added.",
+      "Languages ship as per-language subpath exports (emaki/languages/<id>) and load lazily through emaki/languages. The '.' entry must not grow materially.",
+      "Public APIs stay backward compatible: the createEditor language option and the emaki/json and emaki/engine exports. These files are not edited: src/index.ts, src/engine.ts, src/language/index.ts, src/language/incremental.ts, src/language/json*.ts, src/render/*, src/editor.ts and src/types.ts.",
+      "Grammar sources must have MIT-compatible licenses and be recorded in THIRD_PARTY_NOTICES.md. The Swift and Nix grammars are written fresh, without copying chilla's grammars.",
+      "All commands run in the foreground, with the exit code and complete log path recorded.",
+      "The commit uses the numbered 1-6 commit-message style and is not pushed."
+    ],
+    "designDecisionsAndRationale": [
+      "Provisional canvas-native approach: emaki-original declarative grammars compile to LineLanguage<string> and run on the unchanged IncrementalHighlighter. This needs no wasm, no async init and no packaging beyond peer dependencies. The decision is confirmed only if design §3.3 (a)-(e) hold, with measured evidence in §10.",
+      "Embeds use a composite string state, which keeps checkpoint equality and the LRU cache working.",
+      "The family factories (cLike, lispLike, shellLike, markupLike, iniLike) return a GrammarDef that language modules extend, which keeps 71 modules maintainable.",
+      "Languages added beyond chilla: dedicated typescript, tsx and jsx modules (chilla aliases them to JavaScript), plus vue, svelte and fish. zsh, ksh and sh are aliases of bash.",
+      "The registry loads each language through a dynamic import, so import 'emaki' pulls in no languages.",
+      {
+        "decision": "Amendment 2026-11-04 round 1: contract amendment for syntax-p08-lang-templates. The zero-length HTML embed is no longer required to open on an empty line. On an empty line the P01 grammar engine (src/language/grammar.ts, unchanged) returns the unchanged incoming state with no tokens, and HTML opens at offset 0 of the next nonempty line. P08 resumes alone and adds an empty-line state-equality assertion in test/language/langs/templates.test.ts.",
+        "rationale": "Blocked plan: syntax-p08-lang-templates (blocked-wave-scope-or-contract; blocker path src/language/grammar.ts is outside P08 writePaths). Resolved gap: the engine loops only while pos < text.length, so the plan-only clause 'It must also open on an empty line' could not be satisfied. The design has no empty-line requirement and keeps 'Template hosts restart HTML from its start state after a server block'. Observable tokens are identical. Plan IDs, DAG, writePaths and artifactRoots are unchanged, and grammar.ts stays P01-owned. P01-P07 are recorded as acceptedDependencies. Amendment section: impl-plans/active/syntax-p08-lang-templates.md."
+      }
+    ],
+    "intentionalTradeoffs": [
+      "Line-tokenizer fidelity instead of full parse trees, per the fidelity contract in design §6.",
+      "Template hosts restart HTML from its start state after a server block.",
+      "During parallel waves, the workspace-wide check and boundary logs are informational. The exit-0 gates run serially at P09 and at reconcile.",
+      "Expectations live in test/language/expectations/<group>.ts instead of design §9.1's test/fixtures/languages/expectations.ts, because tsconfig excludes test/fixtures/languages (low, documented)."
+    ],
+    "supportedEdgeCases": [
+      "Lines longer than 4096 characters, where a comment or script end crosses offset 4096 (design §9.1 a-d).",
+      "After a mid-file one-character edit, the incremental tokens equal a fresh tokenization.",
+      "A fence whose language is not loaded renders as string, and closing the fence restores Markdown tags.",
+      "Fence info forms ts, ' rust ignore', {.python} and js,linenos; longest-suffix filenames x.html.erb, x.d.ts and x.js.erb; case-insensitive resolution.",
+      "Astral characters and zero-length rules neither split surrogates nor loop."
+    ],
+    "outOfScopeEdgeCases": [
+      "Svelte '}' inside expressions, multi-line Vue opening tags, and HTML inner state across server blocks.",
+      "Python regex sub-highlighting inside strings (chilla row 52 is excluded), Perl format blocks, and SQL dialects.",
+      "Lisp reader macros beyond quoting, layout-rule parsing, and YAML flow-collection validation."
+    ],
+    "residualRisks": [
+      "The approach decision stays provisional until P12 measures its evidence. Spike network access and ABI availability are unknown (user-QA item 2).",
+      "A canvas language may miss a perf budget. This is routed to the owning plan for serial repair, and budgets are not relaxed.",
+      "Sibling-owned compile or boundary failures first appear at the P09 serial gate.",
+      "Shared amendment budget: after round 1 (blocked-wave-scope-or-contract, P08) one round of 2 remains.",
+      "src/language/grammar.ts is untracked, so 'unchanged by P08' is shown against P01's recorded sha256 (55cddf2a9af0373701a03b329eaf48d969577a43d11a66012ff7ca070b4c280f in tmp/syntax-highlighting-20261102/syntax-p01-engine-contract/redispatch-hashes.log), not git diff."
+    ],
+    "sourcePaths": [
+      "design-docs/specs/design-syntax-highlighting.md",
+      "design-docs/user-qa/syntax-highlighting-qa.md",
+      "impl-plans/active/syntax-00-overview.md",
+      "src/language/incremental.ts",
+      "src/language/json.ts",
+      "src/types.ts",
+      "scripts/perf.mjs",
+      "test/boundary.test.ts",
+      "package.json"
+    ]
+  },
+  "checkpointAmendment": {
+    "amendmentRound": 1,
+    "maxAmendmentRounds": 2,
+    "id": "session-701-wave-002-p08-empty-line-contract",
+    "reason": "blocked-wave-scope-or-contract",
+    "previousCheckpointCommit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+    "blockedPlanIds": ["syntax-p08-lang-templates"],
+    "blockerPaths": ["src/language/grammar.ts"],
+    "resolution": {"mode": "contract amendment (no engine change)", "planId": "syntax-p08-lang-templates", "amendmentSection": "impl-plans/active/syntax-p08-lang-templates.md: Amendment 2026-11-04 (blocked-wave-scope-or-contract, round 1)"},
+    "summaryPath": "tmp/opus-terra-waves/opus-terra-design-and-implement-review-loop-session-701/wave-002/wave-summary.json",
+    "rawJoinPath": "tmp/opus-terra-waves/opus-terra-design-and-implement-review-loop-session-701/wave-002/fanout-join.json",
+    "priorAmendments": [
+      {
+        "id": "integration-636-boundary-ownership",
+        "reason": "integration-paths-outside-writePaths",
+        "previousCheckpointCommit": "0e8f39895e1c7f093df2c807f82eefc019a35e8a",
+        "unmatchedPaths": ["test/boundary.test.ts"],
+        "resolution": {"assignedPlanId": "syntax-p01-engine-contract", "mode": "restore-only writePath"}
+      }
+    ]
+  },
+  "acceptedDependencies": [
+    {
+      "planId": "syntax-p00-bundle-size",
+      "planPath": "impl-plans/active/syntax-p00-bundle-size.md",
+      "commit": "0e8f39895e1c7f093df2c807f82eefc019a35e8a",
+      "provides": [
+        "scripts/bundle-size.mjs (accepted; sha256 9f925d5fd722167af6e6480a4790938d99722e607a94c85b5639ca9058c44218; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p00-bundle-size.md (baseline for 1de212f: '.' 160599/42528, engine 158740/42723, json 2853/1387, diff 3011/1269 raw/gzip)"
+      ],
+      "deferredLowFindings": [
+        "impl-plans/progress/syntax-p00-bundle-size.md:45 calls the boundary-v2 failure 'transient'; corrected at integration/reconcile."
+      ]
+    },
+    {
+      "planId": "syntax-p01-engine-contract",
+      "planPath": "impl-plans/active/syntax-p01-engine-contract.md",
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "src/language/tags.ts, src/language/grammar.ts (compileGrammar, Rule, EmbedSpec, GrammarDef; sha256 55cddf2a9af0373701a03b329eaf48d969577a43d11a66012ff7ca070b4c280f), src/language/families/*, test/language/support/fixture-check.ts, the tsconfig.json fixture exclude, and test/boundary.test.ts restored to 0e8f398 (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p01-engine-contract.md"
+      ]
+    },
+    {
+      "planId": "syntax-p02-lang-c-family",
+      "planPath": "impl-plans/active/syntax-p02-lang-c-family.md",
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "C-family language modules, fixtures and expectations under src/language/langs, test/fixtures/languages and test/language (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p02-lang-c-family.md"
+      ]
+    },
+    {
+      "planId": "syntax-p03-lang-jvm-config",
+      "planPath": "impl-plans/active/syntax-p03-lang-jvm-config.md",
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "JVM and config language modules (including java for jsp), fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p03-lang-jvm-config.md"
+      ]
+    },
+    {
+      "planId": "syntax-p04-lang-web",
+      "planPath": "impl-plans/active/syntax-p04-lang-web.md",
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "Web language modules (including htmlLanguage, used as the template host embed), fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p04-lang-web.md"
+      ]
+    },
+    {
+      "planId": "syntax-p05-lang-scripting",
+      "planPath": "impl-plans/active/syntax-p05-lang-scripting.md",
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "Scripting language modules (including the ruby and tcl server languages), fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p05-lang-scripting.md"
+      ]
+    },
+    {
+      "planId": "syntax-p06-lang-functional",
+      "planPath": "impl-plans/active/syntax-p06-lang-functional.md",
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "Functional language modules (including the erlang server language), fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p06-lang-functional.md"
+      ]
+    },
+    {
+      "planId": "syntax-p07-lang-docs-markup",
+      "planPath": "impl-plans/active/syntax-p07-lang-docs-markup.md",
+      "commit": "a42f6761e8c6125d938d24fb6333e2e88c37663f",
+      "provides": [
+        "Docs and markup language modules, fixtures and expectations (accepted; uncommitted working-tree implementation, finalized at reconcile)",
+        "impl-plans/progress/syntax-p07-lang-docs-markup.md"
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "planId": "syntax-p08-lang-templates",
+      "planPath": "impl-plans/active/syntax-p08-lang-templates.md",
+      "dependsOn": [
+        "syntax-p03-lang-jvm-config",
+        "syntax-p04-lang-web",
+        "syntax-p05-lang-scripting",
+        "syntax-p06-lang-functional"
+      ],
+      "writePaths": [
+        "src/language/templates/html-template.ts",
+        "src/language/langs/php.ts",
+        "src/language/langs/asp.ts",
+        "src/language/langs/jsp.ts",
+        "src/language/langs/erb.ts",
+        "src/language/langs/erlang-html.ts",
+        "src/language/langs/tcl-html.ts",
+        "test/fixtures/languages/php.php",
+        "test/fixtures/languages/asp.asp",
+        "test/fixtures/languages/jsp.jsp",
+        "test/fixtures/languages/erb.erb",
+        "test/fixtures/languages/erlang-html.yaws",
+        "test/fixtures/languages/tcl-html.adp",
+        "test/language/expectations/templates.ts",
+        "test/language/langs/templates.test.ts",
+        "impl-plans/progress/syntax-p08-lang-templates.md",
+        "tmp/syntax-p08"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p08"],
+      "acceptanceCriteria": [
+        "Each id (php, asp, jsp, erb, erlang-html, tcl-html) has a src/language/langs/<id>.ts that exports exactly <camelId>Language (for example erlangHtmlLanguage) and uses static embeds of html plus the server language.",
+        "The shared helper src/language/templates/html-template.ts lives outside langs/. Its header documents that HTML resumes from its start state after a server block.",
+        "Each sample exists (20-60 lines, no package imports, none of the forbidden strings) and has a LanguageExpectation in test/language/expectations/templates.ts (templatesExpectations) with at least 4 snippets, including every (expect) construct.",
+        "npx vitest run test/language/langs/templates.test.ts exits 0.",
+        "The owned-path greps over the check and boundary logs print nothing. Non-owned diagnostics are recorded with their owning plan id and not fixed.",
+        "The progress log records the intent snapshot, pre/post sha256 hashes, exit codes, full log paths and blockers.",
+        "Checkpoint amendment 2026-11-04 round 1 (blocked-wave-scope-or-contract): replacement empty-line contract per the plan's amendment section. An empty root line yields no tokens, does not throw, and returns its incoming state. An empty line inside the open HTML embed keeps the state. The next nonempty HTML line tags as with no empty line. test/language/langs/templates.test.ts asserts the empty-line state equality. src/language/grammar.ts is not edited, and its sha256 still equals P01's recorded 55cddf2a9af0373701a03b329eaf48d969577a43d11a66012ff7ca070b4c280f. The progress log records the amendment and clears the blocker."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p08",
+        "npx vitest run test/language/langs/templates.test.ts > tmp/syntax-p08/test.log 2>&1; echo \"exit=$?\"",
+        "npm run check > tmp/syntax-p08/check.log 2>&1; echo \"exit=$?\"",
+        "grep -E '^(src/language/templates/html-template\\.ts|src/language/langs/(php|asp|jsp|erb|erlang-html|tcl-html)\\.ts|test/language/(expectations/templates|langs/templates\\.test)\\.ts|test/fixtures/languages/(php|asp|jsp|erb|erlang-html|tcl-html)\\.)\\(' tmp/syntax-p08/check.log; echo \"grep=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p08/boundary.log 2>&1; echo \"exit=$?\"",
+        "grep -E '(src/language/templates/html-template\\.ts|src/language/langs/(php|asp|jsp|erb|erlang-html|tcl-html)\\.ts|test/language/(expectations/templates|langs/templates\\.test)\\.ts|test/fixtures/languages/(php|asp|jsp|erb|erlang-html|tcl-html)\\.[a-z]+):' tmp/syntax-p08/boundary.log; echo \"grep=$?\"",
+        "shasum -a 256 src/language/grammar.ts > tmp/syntax-p08/grammar.sha256; grep -q '^55cddf2a9af0373701a03b329eaf48d969577a43d11a66012ff7ca070b4c280f ' tmp/syntax-p08/grammar.sha256; echo \"grammarUnchanged=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p09-registry-integration",
+      "planPath": "impl-plans/active/syntax-p09-registry-integration.md",
+      "dependsOn": [
+        "syntax-p02-lang-c-family",
+        "syntax-p03-lang-jvm-config",
+        "syntax-p04-lang-web",
+        "syntax-p05-lang-scripting",
+        "syntax-p06-lang-functional",
+        "syntax-p07-lang-docs-markup",
+        "syntax-p08-lang-templates"
+      ],
+      "writePaths": [
+        "src/language/registry.ts",
+        "test/language/registry.test.ts",
+        "test/language/languages.test.ts",
+        "test/language/embedded.test.ts",
+        "test/language/long-line.test.ts",
+        "impl-plans/progress/syntax-p09-registry-integration.md",
+        "tmp/syntax-p09"
+      ],
+      "sharedPaths": ["package.json"],
+      "sharedPathNotes": [
+        {"path": "package.json", "intendedEdit": "Add only the exports \"./languages\": \"./src/language/registry.ts\" and \"./languages/*\": \"./src/language/langs/*.ts\" after ./json, keeping the existing four entries byte-identical, and add \"THIRD_PARTY_NOTICES.md\" to files. No dependency or script changes."}
+      ],
+      "artifactRoots": ["tmp/syntax-p09"],
+      "acceptanceCriteria": [
+        "src/language/registry.ts resolves languages by name, alias, extension, filename (longest suffix) and Markdown fence info string. Resolution is case-insensitive and returns undefined for unknown input.",
+        "loadLanguage lazily imports ./langs/* (at least 71 dynamic imports, no static lang imports). It caches results and does not cache rejections.",
+        "These tests exist and pass: registry; languages (every module-backed id has a sample and expectations, and an incremental edit equals a fresh run); embedded (Markdown fences, HTML script/style, Vue, Svelte, PHP); long-line (design §9.1 a-d plus a Markdown fence case).",
+        "Serial integration gate: npm run check and npm test (including test/boundary.test.ts) exit 0. Failures in P00-P08 files are recorded as blockers naming the owning plan, and P09 does not edit those files.",
+        "src/index.ts, src/engine.ts and src/language/index.ts are unchanged, and the registry is not reachable from '.' or './engine'."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p09",
+        "npm run check > tmp/syntax-p09/check.log 2>&1; echo \"exit=$?\"",
+        "npx vitest run test/language > tmp/syntax-p09/lang.log 2>&1; echo \"exit=$?\"",
+        "npm test > tmp/syntax-p09/test.log 2>&1; echo \"exit=$?\"",
+        "grep -c \"import('./langs/\" src/language/registry.ts",
+        "grep -nE \"^import .*langs/\" src/language/registry.ts",
+        "git diff --exit-code -- src/index.ts src/engine.ts src/language/index.ts"
+      ]
+    },
+    {
+      "planId": "syntax-p10-perf-harness",
+      "planPath": "impl-plans/active/syntax-p10-perf-harness.md",
+      "dependsOn": ["syntax-p09-registry-integration"],
+      "writePaths": [
+        "examples/languages",
+        "impl-plans/progress/syntax-p10-perf-harness.md",
+        "dist",
+        "perf-results/syntax-p10",
+        "tmp/syntax-p10"
+      ],
+      "sharedPaths": ["scripts/perf.mjs", "vite.config.ts"],
+      "sharedPathNotes": [
+        {"path": "scripts/perf.mjs", "intendedEdit": "Add the --suite json|langs|all, --dist <dir> and --langs <ids> options and the language suite with <metric>@<id> gates. The JSON and diff suites keep their gate names, budgets and semantics. Under --suite langs, env.distSha256 hashes <dist>/languages/index.html."},
+        {"path": "vite.config.ts", "intendedEdit": "Append examples/languages/index.html to rollupOptions.input; nothing else changes."}
+      ],
+      "artifactRoots": ["dist", "perf-results/syntax-p10", "tmp/syntax-p10"],
+      "acceptanceCriteria": [
+        "examples/languages/index.html?lang=<id>&lines=<n>&autoload=0 builds a document from test/fixtures/languages/<id>.* (imported as ?raw), calls loadLanguage, installs examples/json-10k/perf-hook.ts and exposes window.__emakiLang.",
+        "npm run build emits dist/languages/index.html with separate language chunks. node scripts/perf.mjs --self-test exits 0, and --suite bogus exits 2.",
+        "npm run perf passes every JSON, diff and @<lang> gate on Chromium and WebKit: perf-results/syntax-p10/full/summary.json has allPass true, or every foreground slice does without lowering --loads or --keys. The contents are copied into the progress log.",
+        "npm run check, npm run e2e and the boundary test exit 0. A failing @<id> gate is recorded as a blocker for the owning language plan, without relaxing budgets or editing langs/*."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p10 perf-results/syntax-p10",
+        "npm run check > tmp/syntax-p10/check.log 2>&1; echo \"exit=$?\"",
+        "npm run build > tmp/syntax-p10/build.log 2>&1; echo \"exit=$?\"",
+        "node scripts/perf.mjs --self-test > tmp/syntax-p10/selftest.log 2>&1; echo \"exit=$?\"",
+        "npm run perf -- --out perf-results/syntax-p10/full > tmp/syntax-p10/perf.log 2>&1; echo \"exit=$?\"",
+        "npm run e2e > tmp/syntax-p10/e2e.log 2>&1; echo \"exit=$?\"",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p10/boundary.log 2>&1; echo \"exit=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p11-readme",
+      "planPath": "impl-plans/active/syntax-p11-readme.md",
+      "dependsOn": ["syntax-p09-registry-integration"],
+      "writePaths": [
+        "README.md",
+        "impl-plans/progress/syntax-p11-readme.md",
+        "tmp/syntax-p11"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/syntax-p11"],
+      "acceptanceCriteria": [
+        "The README's ## Languages section keeps its first paragraph and adds five subsections: Built-in languages (a table taken from registry.ts, 71 ids), Selecting a language, Lazy loading, Embedded languages (with known limitations) and Theme tags (the 23 standardTags and defaultTokenColors).",
+        "The export list mentions emaki/languages and emaki/languages/<id>. Other README sections are not restructured.",
+        "grep finds resolveLanguage, loadLanguage, defaultTokenColors and emaki/languages/. The progress log records the table-count check (71)."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p11",
+        "grep -n \"resolveLanguage\\|loadLanguage\\|defaultTokenColors\\|emaki/languages/\" README.md",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p11/boundary.log 2>&1; echo \"exit=$?\""
+      ]
+    },
+    {
+      "planId": "syntax-p12-comparison-evidence",
+      "planPath": "impl-plans/active/syntax-p12-comparison-evidence.md",
+      "dependsOn": ["syntax-p00-bundle-size", "syntax-p10-perf-harness"],
+      "writePaths": [
+        "THIRD_PARTY_NOTICES.md",
+        "impl-plans/progress/syntax-p12-comparison-evidence.md",
+        "perf-results/syntax-p12",
+        "tmp/syntax-p12"
+      ],
+      "sharedPaths": [
+        "design-docs/specs/design-syntax-highlighting.md",
+        "design-docs/user-qa/syntax-highlighting-qa.md"
+      ],
+      "sharedPathNotes": [
+        {"path": "design-docs/specs/design-syntax-highlighting.md", "intendedEdit": "Fill §10 only, and update the Status line and the §3.1 heading to confirmed or provisional per §3.3."},
+        {"path": "design-docs/user-qa/syntax-highlighting-qa.md", "intendedEdit": "Append a hybrid proposal referencing item 1, only if §3.3 reopens the decision."}
+      ],
+      "artifactRoots": ["perf-results/syntax-p12", "tmp/syntax-p12"],
+      "acceptanceCriteria": [
+        "The tree-sitter spike lives only in $TMPDIR/emaki-ts-spike, outside the repo. The progress log records its toolchain manifest: versions, install command, exit code and the sha256 of every .wasm file. If the install fails, blocked: cells are written and the decision stays provisional.",
+        "Both approaches are measured with the same harness for typescript, python, rust and html on Chromium and WebKit. Sizes come from built assets, not package metadata.",
+        "Bundle 'after' versus P00's baseline must meet these gates: '.' delta at most 0.25 KB gzip; each language at most 6 KB gzip (12 KB for embedding hosts); the registry at most 6 KB.",
+        "Design §10 has no TBD, and every cell holds a measured value or blocked: <reason>. The Status is set by applying §3.3 literally.",
+        "THIRD_PARTY_NOTICES.md states that emaki's grammars are original MIT work, and lists the consulted references and spike-only packages with MIT-compatible licenses.",
+        "This plan makes no changes to src, test, scripts, examples or package.json, and the boundary test exits 0."
+      ],
+      "verification": [
+        "mkdir -p tmp/syntax-p12 perf-results/syntax-p12",
+        "node scripts/perf.mjs --suite langs --langs typescript,python,rust,html --out perf-results/syntax-p12/canvas-cmp > tmp/syntax-p12/perf-canvas.log 2>&1; echo \"exit=$?\"",
+        "node scripts/perf.mjs --suite langs --dist \"$TMPDIR/emaki-ts-spike/dist\" --langs typescript,python,rust,html --out perf-results/syntax-p12/treesitter-cmp > tmp/syntax-p12/perf-ts.log 2>&1; echo \"exit=$?\"",
+        "node scripts/bundle-size.mjs --entries all --out tmp/syntax-p12/after.json > tmp/syntax-p12/after.log 2>&1; echo \"exit=$?\"",
+        "grep -c \"blocked:\\|TBD\" design-docs/specs/design-syntax-highlighting.md",
+        "git diff --stat -- src test scripts examples package.json",
+        "npx vitest run test/boundary.test.ts > tmp/syntax-p12/boundary.log 2>&1; echo \"exit=$?\""
+      ]
+    }
+  ]
+}

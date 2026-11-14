@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+tmp/
+perf-results/
+*.log
+.DS_Store
+test-results/
+playwright-report/
+examples/tauri-editor/src-tauri/target/
+examples/tauri-editor/src-tauri/gen/

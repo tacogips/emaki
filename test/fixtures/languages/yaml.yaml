@@ -1,0 +1,20 @@
+# comment
+name: "example"
+items:
+  - value
+anchor: &here thing
+alias: *here
+kind: !!str value
+count: 42
+description: |
+  block text
+next: value
+
+
+
+
+
+
+
+
+

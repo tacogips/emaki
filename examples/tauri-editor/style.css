@@ -1,0 +1,8 @@
+html, body { margin: 0; height: 100%; }
+body { display: flex; flex-direction: column; }
+#editor { flex: 1; min-height: 0; }
+footer { display: flex; align-items: center; gap: 1em; padding: 4px 8px; font: 12px sans-serif; }
+#status-msg { flex: 1; }
+
+#vim-label { white-space: nowrap; }
+#vim-mode { font-weight: bold; }

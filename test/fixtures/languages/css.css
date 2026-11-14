@@ -1,0 +1,21 @@
+/* example */
+@media screen {
+.item { color: #fff; width: 12px; }
+a { content: "hello"; }
+}
+#abc { display: block; }
+.card {
+  background: #aabbcc;
+  padding: 10px;
+  margin: 0;
+  border: 1px solid black;
+  font-size: 14px;
+}
+/* A comment
+   across lines. */
+button {
+  color: blue !important;
+  width: 100%;
+}
+main { max-width: 900px; }
+footer { opacity: 1; }

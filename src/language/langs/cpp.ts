@@ -1,0 +1,4 @@
+import { compileGrammar } from '../grammar';
+import { cLike } from '../families/c-like';
+
+export const cppLanguage = compileGrammar(cLike({ name: 'cpp', keywords: ["int", "char", "void", "return", "if", "else", "for", "while", "struct", "typedef", "const", "static", "unsigned", "class", "template", "namespace", "constexpr", "typename", "public", "private", "auto"], charQuote: true, nestedComments: false, extra: { root: [{ match: /^(\s*#\s*(?:include|import|include_next))(\s*)(<[^>]*>)/, tag: ['meta', undefined, 'string'] }, { match: /^\s*#\s*\w+/, tag: 'meta' }, { match: /R\"(\w*)\(/, tag: 'string', push: 'rawEnd', embed: { language: () => undefined, end: s => new RegExp('\\)' + s + '\"'), endArg: m => m[1] ?? '' } }], states: { rawEnd: [{ match: /\)\w*"/, tag: 'string', pop: true }, { match: /./, tag: 'string' }] } } }));

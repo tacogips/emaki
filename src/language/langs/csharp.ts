@@ -1,0 +1,4 @@
+import { compileGrammar } from '../grammar';
+import { cLike } from '../families/c-like';
+
+export const csharpLanguage = compileGrammar(cLike({ name: 'csharp', keywords: ["class", "public", "private", "static", "void", "return", "if", "else", "for", "while", "int", "string", "new", "using", "namespace", "var"], charQuote: false, nestedComments: false, extra: { root: [{ match: /^\s*#\w+/, tag: 'meta' }, { match: /@"/, tag: 'string', push: 'verbatim' }, { match: /\$"/, tag: 'string', push: 'interpolated' }], states: { verbatim: [{ match: /""/, tag: 'string' }, { match: /"/, tag: 'string', pop: true }, { match: /./, tag: 'string' }], interpolated: [{ match: /[{}]/, tag: 'punctuation' }, { match: /\\./, tag: 'escape' }, { match: /"/, tag: 'string', pop: true }, { match: /./, tag: 'string' }] } } }));

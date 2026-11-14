@@ -1,0 +1,187 @@
+{
+  "taskId": "vim-host-20261111",
+  "workflowMode": "issue-resolution",
+  "implementationBranch": "main",
+  "baseBranch": "main",
+  "remote": "origin",
+  "originalHead": "6351463a6ef64c9c73bf5216e23a3943f438e79c",
+  "designDocPaths": [
+    "design-docs/specs/design-vim.md",
+    "design-docs/user-qa/vim-qa.md"
+  ],
+  "overviewPlanPath": "impl-plans/active/vimhost-00-overview.md",
+  "evidenceRoot": "tmp/vim-host-20261111",
+  "gitPolicy": "No push. Workers make no branches, worktrees, stashes or commits. Serial finalization makes one local commit. Evidence goes under tmp/vim-host-20261111/<planId>/ as .log/.txt/.json files only, because the boundary test scans .ts/.mjs/.html files repository-wide.",
+  "reviewContext": {
+    "issueReference": "none supplied; workflowInput.requestedOutcome is authoritative (session opus-terra-design-and-implement-review-loop-session-836; design accepted comm-019227)",
+    "userProblem": "emaki/vim flattens the host extension points a downstream host needs: application actions, announce/popup/platform/keymap/composition/visibility/history hooks, scroll/type hooks, the full snapshot, tapMode and userEvent-classified external updates. The downstream host therefore cannot replace its private engine without behavior loss.",
+    "requiredOutcomes": [
+      "Host action registry with emaki.* ids and namespaced host ids; unregistered ids do nothing (D16).",
+      "Optional VimHooks with today's defaults (D17).",
+      "VimSnapshot through vim().state, onChange, controller.snapshot and subscribe, with coalesced delivery (D18, D21).",
+      "Exported createVimController wrapper plus the VimHost/VimSnapshot and related types (D19).",
+      "Render switches for the search, hints and hop marks (D20).",
+      "Public tapMode (D23) and noteUpdate userEvent forwarding (D24).",
+      "Class-2 reference tests ported; README documented; core bytes unchanged; Tauri check and smoke green."
+    ],
+    "constraints": [
+      "No core src edits outside src/vim.",
+      "No vactr/solid-js//editor/ text in src, test or scripts.",
+      "Purity exemptions unchanged.",
+      "Peers unchanged.",
+      "vactr and chilla are read-only.",
+      "One local commit, no push."
+    ],
+    "nonGoals": [
+      "No vactr migration.",
+      "No native cursor (user-qa #1).",
+      "No renderer callbacks.",
+      "No registry-validated keymaps (user-qa #6 default).",
+      "No core EditorHandle changes."
+    ],
+    "designDecisionsAndRationale": [
+      {"decision": "D16: one host action registry keyed by action id; emaki.* ids are ordinary keys; unregistered ids are no-ops; hop.* stays engine-owned; namespaced host ids are allowed in n/x/i (design-vim.md §12.2).", "rationale": "Removes the downstream-specific action names while keeping the existing emaki.* ids and ex aliases working. The schema stays registry-independent because compileKeymap runs before or without a registry."},
+      {"decision": "D17: optional VimHooks (announce, closePopupWithEscape, platform, matchesDefaultKeymap, compositionActive, isVisible, historyReduced, scrollCaret, scrollLines, typeText, defaultKey). Each provided member fully replaces today's default (§12.3).", "rationale": "Plain vim() usage is unchanged, and a host with its own surface can supply every reference behavior."},
+      {"decision": "D18/D21: VimSnapshot extends VimState and is the payload of vim().state, onChange, controller.snapshot and subscribe. Delivery is coalesced per public call and deduplicated over the full snapshot (§12.4).", "rationale": "One additive type for both paths. Coalescing keeps the existing controller.test.ts 'notifies once' case passing unedited."},
+      {"decision": "D19: export createVimController through an index.ts wrapper over the existing C1 VimHost contract. The wrapper adds the default scheduler and platform (§12.5).", "rationale": "No second host contract. Purity is preserved because navigator and timers stay in index.ts and adapter.ts."},
+      {"decision": "D20: the search, hints and hop mark renderers can be switched off one by one through render; there are no renderer callbacks (§12.6).", "rationale": "A host keeps its own framework views and renders them from the snapshot."},
+      {"decision": "D22: no extension point touches core; core bundle bytes stay identical to 6351463.", "rationale": "Core boundary and peer constraints."},
+      {"decision": "D23/D24: tapMode is public, and noteUpdate forwards userEvent verbatim when the property is present and otherwise falls back to the legacy heuristic.", "rationale": "Needed for parity with the reference mode toggle and with dot-repeat and macro recording of host-dispatched edits."},
+      {"decision": "Amendment 2026-11-11 round 1: (a) IR-W3-1: host-action handler exceptions follow reference parity. On the keymap path the mapper catch-all (src/vim/mapper.ts:78-82) swallows the exception and resets; src/vim/mapper.ts is not edited and is assigned to no plan. On the ex-alias path the exception propagates out of submitPrompt. p05 replaces its 'propagates handler exceptions' case with two parity cases in test/vim/host-actions.test.ts. p01's aggregate is narrowed to 'npx vitest run test/vim --exclude test/vim/host-actions.test.ts', and the unfiltered run stays a serial reconciliation gate. (b) IR-W3-2: VimController.blur() is added additively (host.ts) and delegated through wrapped() (controller.ts); p07 adds the hop and operator-pending blur snapshot cases. (c) p02, p03, p04, p06, p08 and p09 move to acceptedDependencies; only p01, p05 and p07 remain.", "rationale": "Blocked plan: vimhost-p01-engine-contract. Its 'npx vitest run test/vim' aggregate failed on the sibling-owned p05 regression in test/vim/host-actions.test.ts. The fix needed src/vim/mapper.ts, which no plan owns. Reference parity was confirmed by a 0-byte tmp/vim-host-20261111/reconcile-wave-003/mapper-vs-reference.diff. Resolved gaps: the IR-W3-1 contract mismatch (p01, p05) and the IR-W3-2 facade blur gap (p01, p07). Plan IDs, writePaths and artifactRoots are unchanged. The design-vim.md §12.2 exception sentence is corrected by the design author at finalization."}
+    ],
+    "intentionalTradeoffs": [
+      "The snapshot cursorShape is the engine value (underline for operator-pending), while the Vim.cursorShape getter and the cursor marks keep block (§12.4).",
+      "onChange now also fires on cursor, hint and hop changes (D21).",
+      "Keymap validation cannot check that a host id is registered.",
+      "The platform hook may stay inert if no class-2 case needs a platform-dependent pass-through (user-qa #7)."
+    ],
+    "supportedEdgeCases": [
+      "A handler returning null reports 'no diagnostics' only for the diagnostic ids.",
+      "A numeric return is clamped and extends the selection in visual mode.",
+      "Handler exceptions behave as in the reference (amendment round 1, IR-W3-1). On the keymap path the mapper swallows the exception and resets. On the ex-alias path the exception propagates to the caller of submitPrompt.",
+      "Unregistered ex aliases do nothing.",
+      "hop.* unknowns and undotted ids are rejected with 'unknown action id'; host ids are rejected in o and c.",
+      "An explicit null userEvent is forwarded; an omitted userEvent uses the heuristic.",
+      "tapMode is a no-op before attach and while a prompt is open.",
+      "With every renderer off, a host can pass a no-op marks implementation."
+    ],
+    "outOfScopeEdgeCases": [
+      "Native block cursor (user-qa #1).",
+      "Registry-validated keymaps (user-qa #6).",
+      "Renderer callbacks.",
+      "The downstream migration itself."
+    ],
+    "sourcePaths": [
+      "src/vim/host.ts",
+      "src/vim/types.ts",
+      "src/vim/controller.ts",
+      "src/vim/actions.ts",
+      "src/vim/keymap-schema.ts",
+      "src/vim/index.ts",
+      "src/vim/keys.ts",
+      "README.md"
+    ]
+  },
+  "acceptedDependencies": [
+    {"planId": "vimhost-p02-action-schema", "planPath": "impl-plans/active/vimhost-p02-action-schema.md", "commit": "c8c9040413ae4d94d9ed96b603798ca9b831c10e", "provides": "BuiltinActionId, ActionId and isHostActionId in src/vim/actions.ts; keymap-schema accepts namespaced host ids in n/x/i and rejects them in o/c; test/vim/actions.test.ts (accepted uncommitted working-tree implementation, finalized at serial reconciliation)."},
+    {"planId": "vimhost-p03-public-adapter", "planPath": "impl-plans/active/vimhost-p03-public-adapter.md", "commit": "c8c9040413ae4d94d9ed96b603798ca9b831c10e", "provides": "src/vim/index.ts: VimOptions actions/hooks/render, VimSnapshot state/onChange, Vim.tapMode, and the exported createVimController wrapper that returns the facade (so blur is exposed automatically); test/vim/public-api.test.ts (accepted uncommitted working-tree implementation, finalized at serial reconciliation)."},
+    {"planId": "vimhost-p04-readme", "planPath": "impl-plans/active/vimhost-p04-readme.md", "commit": "c8c9040413ae4d94d9ed96b603798ca9b831c10e", "provides": "README.md 'Host extension points' subsection (accepted uncommitted working-tree implementation, finalized at serial reconciliation)."},
+    {"planId": "vimhost-p06-hooks-tests", "planPath": "impl-plans/active/vimhost-p06-hooks-tests.md", "commit": "c8c9040413ae4d94d9ed96b603798ca9b831c10e", "provides": "test/vim/host-hooks.test.ts with provided and default cases for every hook, plus the class-2 announce/popup-escape/platform/default-keymap table (accepted uncommitted working-tree implementation, finalized at serial reconciliation)."},
+    {"planId": "vimhost-p08-surface-host-tests", "planPath": "impl-plans/active/vimhost-p08-surface-host-tests.md", "commit": "c8c9040413ae4d94d9ed96b603798ca9b831c10e", "provides": "test/vim/surface-host.test.ts and test/vim/note-update.test.ts driving the exported createVimController with a custom host (accepted uncommitted working-tree implementation, finalized at serial reconciliation)."},
+    {"planId": "vimhost-p09-tapmode-tests", "planPath": "impl-plans/active/vimhost-p09-tapmode-tests.md", "commit": "c8c9040413ae4d94d9ed96b603798ca9b831c10e", "provides": "test/vim/tap-mode.test.ts plus the class-2 tapMode table (accepted uncommitted working-tree implementation, finalized at serial reconciliation)."}
+  ],
+  "plans": [
+    {
+      "planId": "vimhost-p01-engine-contract",
+      "planPath": "impl-plans/active/vimhost-p01-engine-contract.md",
+      "dependsOn": [],
+      "writePaths": [
+        "src/vim/host.ts",
+        "src/vim/types.ts",
+        "src/vim/controller.ts",
+        "tmp/vim-host-20261111/vimhost-p01-engine-contract",
+        "impl-plans/progress/vimhost-p01-engine-contract.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/vim-host-20261111/vimhost-p01-engine-contract"],
+      "acceptanceCriteria": [
+        "core-before.json is written before any source edit.",
+        "The C-R5-1 types are added additively in host.ts.",
+        "The shim uses hooks, actions and render with today's defaults.",
+        "runHostAction follows the §12.2 return contract.",
+        "The ex aliases dispatch through the registry.",
+        "The facade exposes snapshot, coalesced subscribe, tapMode and noteUpdate userEvent forwarding (present including null is forwarded verbatim; absent uses the heuristic).",
+        "All existing test/vim suites pass unedited.",
+        "Amendment round 1 (IR-W3-2): VimController.blur(): void is added additively in host.ts, and the facade delegates it through wrapped() to ReferenceController.blur, whose semantics are unchanged.",
+        "Amendment round 1 (IR-W3-1): src/vim/mapper.ts is not edited. Reference parity governs. The sibling-owned test/vim/host-actions.test.ts belongs to vimhost-p05-actions-tests and is excluded from p01's aggregate."
+      ],
+      "verification": [
+        "node scripts/bundle-size.mjs --entries core --out tmp/vim-host-20261111/vimhost-p01-engine-contract/core-before.json",
+        "npx tsc --noEmit",
+        "npx vitest run test/vim --exclude test/vim/host-actions.test.ts",
+        "npx vitest run test/boundary.test.ts test/vim/purity.test.ts",
+        "git diff --name-only 6351463 -- src ':!src/vim'"
+      ]
+    },
+    {
+      "planId": "vimhost-p05-actions-tests",
+      "planPath": "impl-plans/active/vimhost-p05-actions-tests.md",
+      "dependsOn": ["vimhost-p01-engine-contract", "vimhost-p02-action-schema", "vimhost-p03-public-adapter"],
+      "writePaths": [
+        "test/vim/host-actions.test.ts",
+        "tmp/vim-host-20261111/vimhost-p05-actions-tests",
+        "impl-plans/progress/vimhost-p05-actions-tests.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/vim-host-20261111/vimhost-p05-actions-tests"],
+      "acceptanceCriteria": [
+        "The <leader>e host action, diagnostic move/clamp/visual/null, unregistered no-op, ex aliases, schema rules and exception propagation are tested.",
+        "Amendment round 1 (IR-W3-1): the exception case is replaced by two reference-parity cases. A keymap-bound handler exception is swallowed: no throw, pending is cleared and the next key works. An ex-alias exception propagates out of submitPrompt. src/vim/mapper.ts is not edited.",
+        "The class-2 application-actions table is logged."
+      ],
+      "verification": [
+        "npx vitest run test/vim/host-actions.test.ts",
+        "npx tsc --noEmit",
+        "npx vitest run test/boundary.test.ts"
+      ]
+    },
+    {
+      "planId": "vimhost-p07-snapshot-tests",
+      "planPath": "impl-plans/active/vimhost-p07-snapshot-tests.md",
+      "dependsOn": ["vimhost-p01-engine-contract", "vimhost-p03-public-adapter"],
+      "writePaths": [
+        "test/vim/snapshot.test.ts",
+        "tmp/vim-host-20261111/vimhost-p07-snapshot-tests",
+        "impl-plans/progress/vimhost-p07-snapshot-tests.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/vim-host-20261111/vimhost-p07-snapshot-tests"],
+      "acceptanceCriteria": [
+        "All snapshot fields, hints after the delay, hop labels, the delivery rule and the render switches are tested.",
+        "Amendment round 1 (IR-W3-2): reference blur snapshot cases are tested through the exported createVimController. Hop: blur() gives hop === null, pending === '' and one delivery. Operator-pending: blur() returns mode to normal with pending === ''. No src edits.",
+        "The class-2 hints/hop UI-data table is logged."
+      ],
+      "verification": [
+        "npx vitest run test/vim/snapshot.test.ts",
+        "npx tsc --noEmit",
+        "npx vitest run test/boundary.test.ts"
+      ]
+    }
+  ],
+  "waves": [
+    ["vimhost-p01-engine-contract"],
+    ["vimhost-p05-actions-tests", "vimhost-p07-snapshot-tests"]
+  ],
+  "serialReconciliation": {
+    "logs": "tmp/vim-host-20261111/reconcile",
+    "commands": [
+      "npm run check && npm test && npm run build && node scripts/bundle-size.mjs",
+      "node scripts/bundle-size.mjs --entries core --out tmp/vim-host-20261111/reconcile/core-after.json",
+      "git diff --name-only 6351463 -- src ':!src/vim'",
+      "cd examples/tauri-editor && npm run check && npm run smoke",
+      "npm run perf (optional; on failure compare with 6351463 under the same load)"
+    ],
+    "comparison": "Raw and gzip bytes of '.', './engine', './json' and './diff' in core-after.json must equal tmp/vim-host-20261111/vimhost-p01-engine-contract/core-before.json.",
+    "commit": "One local commit including the class-2 per-case table assembled from the p05–p09 progress logs. No push."
+  }
+}

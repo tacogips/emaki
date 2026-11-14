@@ -1,0 +1,20 @@
+# note
+"""
+block description
+"""
+type User {
+  name: String
+}
+query Find($id: ID) @cached {
+  user(id: $id, limit: 42) { name }
+}
+fragment Fields on User { name }
+# version 42
+# sample line 0
+# sample line 1
+# sample line 2
+# sample line 3
+# sample line 4
+# sample line 5
+# sample line 6
+# sample line 7

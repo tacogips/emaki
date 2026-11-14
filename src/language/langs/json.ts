@@ -1,0 +1,1 @@
+export { jsonLanguage } from '../json';

@@ -1,0 +1,310 @@
+{
+  "taskId": "vim-20261111",
+  "workflowMode": "issue-resolution",
+  "implementationBranch": "main",
+  "baseBranch": "main",
+  "remote": "origin",
+  "originalHead": "f204032b695104f402d3217542d7fb06f56feeed",
+  "designDocPaths": [
+    "design-docs/specs/design-vim.md",
+    "design-docs/specs/design-tauri-editor.md",
+    "design-docs/user-qa/vim-qa.md"
+  ],
+  "overviewPlanPath": "impl-plans/active/vim-00-overview.md",
+  "evidenceRoot": "tmp/vim-20261111",
+  "gitPolicy": "No push. Workers make no branches, worktrees, stashes or commits. Finalization makes one local commit. Evidence goes under tmp/vim-20261111/<planId>/<attempt>/ and stays untracked.",
+  "reviewContext": {
+    "issueReference": "workflowInput:emaki-vim-adapter-keymap-tauri (session opus-terra-design-and-implement-review-loop-session-829; plan review accept comm-019053)",
+    "userProblem": "The vim engine is ported into src/vim at f204032, but emaki has no public emaki/vim entry, no way to customize or persist keymaps at runtime, and the Tauri example cannot enable vim, load a user keymap or map ex commands to file actions.",
+    "requiredOutcomes": [
+      "src/vim/index.ts implements C2: vim(options) returns a ModalKeyHook plus attach(editor, host), state, cursorShape and onChange; block cursor in normal mode; :, / and ? prompt editing; jsdom integration test drives createEditor with vim (i, type, Esc, dd, u, /search, :s).",
+      "Keymap customization: vim({keymap|preset}) and runtime setKeymap without re-creating the editor; invalid keymaps report issues without breaking; exports compileKeymap, KEYMAP_MAX_BYTES, KEYMAP_PRESETS, KeymapStore and LocalKeymapStore; LocalKeymapStore round trip tested.",
+      "Tauri example: #vim toggle, #vim-mode indicator, :w/:wq/:x/:q/:q!/:e/:e path mapped to save/close/open, Cmd+N/O/S in all modes, user keymap via status-bar dialog button persisted in localStorage with issues shown; smoke extended (vim basics, :w, :e, custom jj keymap) and passing; native debug build succeeds.",
+      "Core bundle bytes for users not importing emaki/vim are unchanged (scripts/bundle-size.mjs); README documents emaki/vim, keymap customization and the Tauri vim/keymap features.",
+      "Root npm run check, npm test, npm run build pass; example npm run check, build, smoke and cargo test pass."
+    ],
+    "nonGoals": [
+      "Modifying vactr or chilla.",
+      "Re-porting or re-auditing engine test parity (vim-p01 closed by operator decision).",
+      "user-qa #1 (native cursor shape) and user-qa #5 (config-dir keymap); both deferred.",
+      "Non-additive C1 changes, new EditorOptions or ModalKeyHook members, a public timer option, core src edits outside src/vim (except p07's conditional input fix).",
+      "Keymap editor UI, undo preservation across a vim toggle, runtime hook swap, IME in prompts, copy interception.",
+      "Pushing."
+    ],
+    "constraints": [
+      "vactr and chilla are read-only; no file under src/, test/ or scripts/ may contain vactr, solid-js or /editor/.",
+      "C1 engine contract changes are additive only (setKeymap, cmdline).",
+      "emaki/vim stays framework-independent; the core entry never imports vim; @codemirror/state and @codemirror/commands remain the only peers.",
+      "No npm install; package-lock.json and Cargo.lock unchanged.",
+      "Rust uses ~/.cargo/bin/cargo with PATH=\"$HOME/.cargo/bin:$PATH\"; never the mise shim.",
+      "Commit in emaki; gitPush=false. Archive all vim-* plans to impl-plans/completed at the end (plan-archive node)."
+    ],
+    "designDecisionsAndRationale": [
+      {"decision": "Rev 4 redispatch from f204032: p01, p02, p04 and p05 are accepted dependencies; remaining plans are p08, p09, p03, p06, p10 and p07.", "rationale": "Those plans landed in f204032; the rev 3 waves for p03, p06 and p07 are superseded by the rev 4 plan files."},
+      {"decision": "D10: keymaps are compiled in the adapter and applied through an additive C1 setKeymap; a failed compile keeps the previous keymap and issues are surfaced via keymapIssues and the setKeymap result.", "rationale": "Runtime replacement without remount, no dropped issues, C1 stays additive."},
+      {"decision": "D11: the Tauri user keymap is loaded through the dialog only (pick_open_path + read_text_file) and persisted with LocalKeymapStore.", "rationale": "Satisfies 'dialog or app config dir' without new Rust commands or capabilities."},
+      {"decision": "D12: KeymapStore is async and validation-free; LocalKeymapStore enforces only the byte limit and exception safety.", "rationale": "Apps decide what to save; the Tauri example saves only error-free compiles."},
+      {"decision": "D13: the prompt applies compiled cmdline (c) maps as a single-step key translation.", "rationale": "Compiled c maps are not silently ignored."},
+      {"decision": "D14: noop-write ex forwarding splits a trailing ! into bang.", "rationale": "Engine bug (controller.ts:655 forwarded bang:false for q!) fixed during integration so :q! can skip the guard."},
+      {"decision": "D15 / DR-06: the adapter owns a cancelable setTimeout/queueMicrotask scheduler passed through VimEngineOptions.timer and cancelled on detach; no public timer option.", "rationale": "The controller fallback timer only runs ms===0, so mapped-prefix timeouts (timeoutlen) never fired."},
+      {"decision": "Waves [p08, p09] -> [p03] -> [p06, p10] -> [p07]; README.md is written by p10 and only appended by p07 as a sharedPath.", "rationale": "Disjoint writePaths per wave; tightly coupled example files stay in one plan."},
+      {"decision": "Amendment 2026-11-11 round 1: integration-paths-outside-writePaths UF-1; test/vim/purity.test.ts is added to vim-p09-keymap-store writePaths (sole owner) and exempts exactly src/vim/index.ts, src/vim/adapter.ts and src/vim/keymap-store.ts from the DOM-global and timer-global checks only.", "rationale": "Blocked plans vim-p08-engine-keymap-contract and vim-p09-keymap-store: npx vitest run test/vim failed purity on src/vim/keymap-store.ts (localStorage, C7/D12); adapter.ts (D15 timers) and index.ts (C2 HTMLElement) would fail likewise. Regexes stay unchanged, @codemirror/view check applies to all files, cursor.ts/prompt.ts not exempt; plan IDs, DAG and waves unchanged; design-vim.md §3 clarification only."},
+      {"decision": "Amendment 2026-11-11 round 2: blocked-wave-scope-or-contract; the vim-p07-docs-verify V0 base archive (tmp/vim-20261111/vim-p07-docs-verify/base) is transient and is deleted (rm -rf ... && test ! -e ...) right after core-before.json is written and before V1; test/boundary.test.ts is not edited.", "rationale": "Blocked plan vim-p07-docs-verify: V1 exited 1 because test/boundary.test.ts:89-100 walk('') scans tmp/ and found six imports under base/examples/tauri-editor (1 of 1505 tests failed, v1.log). Resolved by cleanup inside p07's own artifact root; core-before.json and v0.log retained as V0 evidence; writePaths, sharedPaths, artifactRoots, plan IDs and DAG unchanged; no design change."}
+    ],
+    "intentionalTradeoffs": [
+      "Toggling vim remounts the editor and loses undo history.",
+      "The bar caret stays visible behind the mark-based block cursor until user-qa #1 is decided.",
+      "V7 native dirty-on-launch observation will likely be recorded as not observed (no GUI session).",
+      "README (p10) is written in parallel with p06; drift is caught by p07 V4 and the final review.",
+      "':w!' is not mapped in the example ex table and falls through to E492 (not in accepted scope).",
+      "Wave-1 per-plan npx tsc --noEmit may surface sibling in-progress errors; full gates run in p07 and serial reconciliation."
+    ],
+    "supportedEdgeCases": [
+      "Invalid keymap JSON, wrong version, non-string/object input or unknown preset yields issues; the previous keymap and base vim keep working.",
+      "setKeymap(null) resets to base bindings and flushes a pending mapped prefix without duplicating text.",
+      "detach cancels all pending timers before controller dispose; no onChange after detach.",
+      "Paste/cut during an open prompt never mutates the document; paste appends the first line to the prompt.",
+      "Meta-modified keys return false, so app shortcuts work in every mode including during a prompt.",
+      ":q is guarded, :q! skips the guard; :e path with a declined discard or declined native confirmation leaves text, title and position unchanged.",
+      "LocalKeymapStore: oversized (UTF-8 bytes) text is rejected without setItem; throwing or missing storage resolves null/unavailable and never rejects.",
+      "Keymap load with a cancelled pick or an invalid file leaves storage, the live keymap and the document unchanged."
+    ],
+    "outOfScopeEdgeCases": [
+      "IME inside prompts.",
+      "copy interception.",
+      "Native cursor shape (user-qa #1).",
+      "Config-dir keymap discovery (user-qa #5).",
+      "':w!' in the Tauri ex table."
+    ],
+    "sourcePaths": [
+      "design-docs/specs/design-vim.md",
+      "design-docs/specs/design-tauri-editor.md",
+      "design-docs/user-qa/vim-qa.md",
+      "impl-plans/active/vim-00-overview.md",
+      "src/vim/host.ts",
+      "src/vim/controller.ts",
+      "src/vim/ex.ts",
+      "src/vim/keymap-schema.ts",
+      "src/vim/presets/index.ts",
+      "src/types.ts",
+      "src/plugin/runtime.ts",
+      "test/vim/keymap-store.test.ts",
+      "test/boundary.test.ts",
+      "scripts/bundle-size.mjs",
+      "examples/tauri-editor/src/main.ts",
+      "examples/tauri-editor/src/mock-ipc.ts",
+      "examples/tauri-editor/scripts/smoke.mjs",
+      "examples/tauri-editor/src-tauri/src/lib.rs"
+    ]
+  },
+  "acceptedDependencies": [
+    {"planId": "vim-p01-engine", "planPath": "impl-plans/active/vim-p01-engine.md", "commit": "f204032b695104f402d3217542d7fb06f56feeed", "provides": "Ported vim engine in src/vim (C1 host contract, createVimController, keymap-schema/runtime, mapper, presets) and test/vim suites."},
+    {"planId": "vim-p02-packaging", "planPath": "impl-plans/active/vim-p02-packaging.md", "commit": "f204032b695104f402d3217542d7fb06f56feeed", "provides": "package.json ./vim export, bundle-size.mjs ./vim entry with --root/--entries core, boundary isolation test."},
+    {"planId": "vim-p04-tauri-dirty", "planPath": "impl-plans/active/vim-p04-tauri-dirty.md", "commit": "f204032b695104f402d3217542d7fb06f56feeed", "provides": "Tauri example clean-baseline dirty fix, latest-wins setTitle, mock seed and smoke launch regression."},
+    {"planId": "vim-p05-rust-confirm-open", "planPath": "impl-plans/active/vim-p05-rust-confirm-open.md", "commit": "f204032b695104f402d3217542d7fb06f56feeed", "provides": "Rust confirm_open_path command with absolutize helper and tests."}
+  ],
+  "waves": [
+    ["vim-p08-engine-keymap-contract", "vim-p09-keymap-store"],
+    ["vim-p03-adapter"],
+    ["vim-p06-tauri-vim", "vim-p10-readme"],
+    ["vim-p07-docs-verify"]
+  ],
+  "plans": [
+    {
+      "planId": "vim-p08-engine-keymap-contract",
+      "planPath": "impl-plans/active/vim-p08-engine-keymap-contract.md",
+      "dependsOn": [],
+      "writePaths": [
+        "src/vim/host.ts",
+        "src/vim/controller.ts",
+        "test/vim/search-ex.test.ts",
+        "tmp/vim-20261111/vim-p08-engine-keymap-contract",
+        "impl-plans/progress/vim-p08-engine-keymap-contract.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/vim-20261111/vim-p08-engine-keymap-contract"],
+      "acceptanceCriteria": [
+        "VimController gains setKeymap(keymap: CompiledKeymap | null): void and readonly cmdline: ReadonlyMap<VimKey, VimKey>; host.ts diff is additive only.",
+        "The construction-time keymap also sets cmdline; setKeymap(null) leaves cmdline empty and base bindings active.",
+        ":q! reaches ex as {name: 'q', bang: true, args: '', line: 'q!'}; :wq! as {name: 'wq', bang: true}; E492 fallback unchanged.",
+        "All existing test/vim suites plus the new search-ex cases pass; no core src edits outside src/vim."
+      ],
+      "verification": [
+        "npx vitest run test/vim",
+        "npx tsc --noEmit",
+        "git diff --name-only f204032b695104f402d3217542d7fb06f56feeed -- src ':!src/vim'",
+        "git diff -U0 f204032b695104f402d3217542d7fb06f56feeed -- src/vim/host.ts"
+      ]
+    },
+    {
+      "planId": "vim-p09-keymap-store",
+      "planPath": "impl-plans/active/vim-p09-keymap-store.md",
+      "dependsOn": [],
+      "writePaths": [
+        "src/vim/keymap-store.ts",
+        "test/vim/keymap-store.test.ts",
+        "test/vim/purity.test.ts",
+        "tmp/vim-20261111/vim-p09-keymap-store",
+        "impl-plans/progress/vim-p09-keymap-store.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/vim-20261111/vim-p09-keymap-store"],
+      "acceptanceCriteria": [
+        "src/vim/keymap-store.ts exports KeymapStoreSaveResult, KeymapStore and LocalKeymapStore({key?, storage?}) exactly as C7, default key emaki.vim.keymap.",
+        "UTF-8 byte limit KEYMAP_MAX_BYTES enforced on save (too-large, no setItem) and load (null, value kept); missing or throwing storage yields null/unavailable; methods never reject; text stored verbatim with no parsing.",
+        "Existing keymap-store cases unchanged; every new LocalKeymapStore row passes; no forbidden strings.",
+        "Amendment UF-1: test/vim/purity.test.ts exempts exactly src/vim/index.ts, src/vim/adapter.ts and src/vim/keymap-store.ts from the DOM-global and timer-global checks only (the @codemirror/view check still applies to every file; all other src/vim files keep every check; regexes unchanged); npx vitest run test/vim exits 0."
+      ],
+      "verification": [
+        "npx vitest run test/vim",
+        "npx vitest run test/vim/keymap-store.test.ts test/vim/purity.test.ts",
+        "git diff -U0 2eeb0c8edd16b781e2365ebfc23bca2f08f14335 -- test/vim/purity.test.ts",
+        "npx tsc --noEmit",
+        "! rg -n 'vactr|solid-js|/editor/' src/vim/keymap-store.ts test/vim/keymap-store.test.ts"
+      ]
+    },
+    {
+      "planId": "vim-p03-adapter",
+      "planPath": "impl-plans/active/vim-p03-adapter.md",
+      "dependsOn": ["vim-p08-engine-keymap-contract", "vim-p09-keymap-store"],
+      "writePaths": [
+        "src/vim/index.ts",
+        "src/vim/adapter.ts",
+        "src/vim/cursor.ts",
+        "src/vim/prompt.ts",
+        "test/vim/editor-integration.test.ts",
+        "test/vim/public-api.test.ts",
+        "tmp/vim-20261111/vim-p03-adapter",
+        "impl-plans/progress/vim-p03-adapter.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/vim-20261111/vim-p03-adapter"],
+      "acceptanceCriteria": [
+        "C2 rev 4 exported and nothing more: vim, Vim/VimOptions/VimState/VimPrompt/KeymapApplyResult types, compileKeymap, KEYMAP_MAX_BYTES, KEYMAP_PRESETS, LocalKeymapStore and their types.",
+        "attach creates the controller with a DR-06 scheduler (no keymap/preset passed to createVimController), applies the pending keymap, and returns an idempotent detach that cancels timers before dispose.",
+        "setKeymap never throws: failed compile keeps the previous keymap ({applied:false, issues}); null resets; non-string/object input yields path '$'.",
+        "Prompt editing with cmdline maps, DR-05 paste/cut isolation, Meta keys false, block cursor marks under owner emaki-vim.",
+        "Every rev 3, keymap and DR-06 timing row in editor-integration.test.ts and public-api.test.ts passes; zero core edits outside src/vim; bundle-size lists ./vim."
+      ],
+      "verification": [
+        "npx vitest run test/vim/editor-integration.test.ts test/vim/public-api.test.ts test/vim/keymap-controller.test.ts test/vim/mapper.test.ts",
+        "npx vitest run test/vim test/boundary.test.ts",
+        "npx vitest run test/vim/purity.test.ts",
+        "npx tsc --noEmit",
+        "node scripts/bundle-size.mjs --out tmp/vim-20261111/vim-p03-adapter/all.json",
+        "git diff --name-only f204032b695104f402d3217542d7fb06f56feeed -- src ':!src/vim'",
+        "! rg -n 'vactr|solid-js|/editor/' src/vim/index.ts src/vim/adapter.ts src/vim/cursor.ts src/vim/prompt.ts test/vim/editor-integration.test.ts test/vim/public-api.test.ts"
+      ]
+    },
+    {
+      "planId": "vim-p06-tauri-vim",
+      "planPath": "impl-plans/active/vim-p06-tauri-vim.md",
+      "dependsOn": ["vim-p03-adapter"],
+      "writePaths": [
+        "examples/tauri-editor/index.html",
+        "examples/tauri-editor/style.css",
+        "examples/tauri-editor/vite.config.ts",
+        "examples/tauri-editor/tsconfig.json",
+        "examples/tauri-editor/src/main.ts",
+        "examples/tauri-editor/src/mock-ipc.ts",
+        "examples/tauri-editor/scripts/smoke.mjs",
+        "examples/tauri-editor/dist",
+        "tmp/vim-20261111/vim-p06-tauri-vim",
+        "impl-plans/progress/vim-p06-tauri-vim.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["examples/tauri-editor/dist", "tmp/vim-20261111/vim-p06-tauri-vim"],
+      "acceptanceCriteria": [
+        "emaki/vim alias in vite.config.ts and tsconfig paths; #vim checkbox persisted under emaki-tauri-editor.vim; #vim-mode, #vim-keymap, #vim-keymap-clear hidden when vim is off; live remount keeps dirty and clean; fresh vim() per mount, detached before destroy.",
+        "Ex mapping: :w, :w path / :saveas path, :wq / :x, :q (guarded), :q! (skips guard), :e, :e path via openNamed (guard -> confirm_open_path -> openPath); Cmd/Ctrl+N/O/S/Shift+S work in every mode through a shared busy run() helper.",
+        "Keymap button loads via pick_open_path + read_text_file, validates with compileKeymap, persists with LocalKeymapStore key emaki-tauri-editor.vim.keymap, applies live via setKeymap, shows issues; reset clears storage and keymap.",
+        "mock-ipc adds confirmOpen and confirm_open_path; smoke has every old, p04 and new checks 1-12 ok; dist has no mock code; no src-tauri edits."
+      ],
+      "verification": [
+        "cd examples/tauri-editor && npm run check",
+        "cd examples/tauri-editor && npm run build",
+        "cd examples/tauri-editor && ! rg -n 'mockIPC|dispatchIdentity' dist",
+        "cd examples/tauri-editor && npm run smoke",
+        "git diff --name-only f204032b695104f402d3217542d7fb06f56feeed -- examples/tauri-editor/src-tauri"
+      ]
+    },
+    {
+      "planId": "vim-p10-readme",
+      "planPath": "impl-plans/active/vim-p10-readme.md",
+      "dependsOn": ["vim-p03-adapter"],
+      "writePaths": [
+        "README.md",
+        "tmp/vim-20261111/vim-p10-readme",
+        "impl-plans/progress/vim-p10-readme.md"
+      ],
+      "sharedPaths": [],
+      "artifactRoots": ["tmp/vim-20261111/vim-p10-readme"],
+      "acceptanceCriteria": [
+        "README has a ## emaki/vim section: usage with attach/detach, state/onChange/cursorShape, ex and clipboard options, features, keymap customization (JSON outline, jj and leader examples, presets, setKeymap, keymapIssues, compileKeymap, KEYMAP_MAX_BYTES, timeoutlen), KeymapStore/LocalKeymapStore persistence, opt-in zero core impact, bar caret limitation.",
+        "Tauri section documents the vim checkbox and key, #vim-mode, ex mapping table, Cmd/Ctrl+N/O/S in every mode, keymap and reset keymap buttons with emaki-tauri-editor.vim.keymap.",
+        "Only README.md and the progress log are written."
+      ],
+      "verification": [
+        "rg -n '^## emaki/vim|setKeymap|LocalKeymapStore|keymapIssues|emaki-tauri-editor.vim.keymap|:q!' README.md",
+        "rg -c 'LocalKeymapStore|compileKeymap|KEYMAP_PRESETS|KEYMAP_MAX_BYTES|setKeymap' src/vim/index.ts",
+        "git diff --stat -- README.md"
+      ]
+    },
+    {
+      "planId": "vim-p07-docs-verify",
+      "planPath": "impl-plans/active/vim-p07-docs-verify.md",
+      "dependsOn": ["vim-p03-adapter", "vim-p06-tauri-vim", "vim-p08-engine-keymap-contract", "vim-p09-keymap-store", "vim-p10-readme"],
+      "writePaths": [
+        "src/input/input.ts",
+        "test/input/native-dirty-sequence.test.ts",
+        "dist",
+        "perf-results",
+        "examples/tauri-editor/dist",
+        "examples/tauri-editor/src-tauri/target",
+        "tmp/vim-20261111/vim-p07-docs-verify",
+        "impl-plans/progress/vim-p07-docs-verify.md"
+      ],
+      "sharedPaths": ["README.md"],
+      "sharedPathNotes": [
+        {"path": "README.md", "intendedEdit": "p10 (wave 3) wrote the vim, keymap and Tauri sections. p07 only appends the dirty-on-launch root-cause paragraph and the V7 observation status inside the existing Tauri section; do not rewrite p10's text."}
+      ],
+      "artifactRoots": [
+        "dist",
+        "perf-results",
+        "examples/tauri-editor/dist",
+        "examples/tauri-editor/src-tauri/target",
+        "tmp/vim-20261111/vim-p07-docs-verify"
+      ],
+      "acceptanceCriteria": [
+        "V0-V6, V8 and V9 pass; V2 core bundle bytes (., ./engine, ./json, ./diff) identical to f204032; V1t lists DR-06 timing cases passed; V4 smoke has every check ok including p06 checks 1-12; V6 native debug build produces src-tauri/target/debug/emaki-tauri-editor.",
+        "V7 recorded honestly ('not observed (no GUI session)' when unavailable); src/input/input.ts and the native-dirty-sequence test are edited only if V7 is natively observed with an emaki input-path docChanged.",
+        "README gets only the appended dirty-on-launch root-cause paragraph and V7 status; progress log has every command, exit code, log path, V2 byte table and rev 4 feature summary.",
+        "Amendment 2026-11-11 (blocked-wave-scope-or-contract, round 2): the V0 base archive is transient. After core-before.json is written, delete tmp/vim-20261111/vim-p07-docs-verify/base, before V1. test/boundary.test.ts walks the whole repository, including tmp/, so the archived examples/tauri-editor files would fail it. The boundary test is not edited."
+      ],
+      "verification": [
+        "mkdir -p tmp/vim-20261111/vim-p07-docs-verify/base && git archive f204032b695104f402d3217542d7fb06f56feeed | tar -x -C tmp/vim-20261111/vim-p07-docs-verify/base && node scripts/bundle-size.mjs --root tmp/vim-20261111/vim-p07-docs-verify/base --entries core --out tmp/vim-20261111/vim-p07-docs-verify/core-before.json && rm -rf tmp/vim-20261111/vim-p07-docs-verify/base && test ! -e tmp/vim-20261111/vim-p07-docs-verify/base",
+        "npm run check && npm test && npm run build && node scripts/bundle-size.mjs --out tmp/vim-20261111/vim-p07-docs-verify/all.json",
+        "npx vitest run test/vim/editor-integration.test.ts test/vim/keymap-controller.test.ts test/vim/mapper.test.ts",
+        "node scripts/bundle-size.mjs --entries core --out tmp/vim-20261111/vim-p07-docs-verify/core-after.json",
+        "node -e \"const a=require('./tmp/vim-20261111/vim-p07-docs-verify/core-before.json').entries,b=require('./tmp/vim-20261111/vim-p07-docs-verify/core-after.json').entries;for(const k of ['.','./engine','./json','./diff'])if(!a[k]||!b[k]||a[k].raw!==b[k].raw||a[k].gzip!==b[k].gzip)process.exit(1)\"",
+        "git diff --name-only f204032b695104f402d3217542d7fb06f56feeed -- src ':!src/vim'",
+        "npm run perf",
+        "cd examples/tauri-editor && npm run check && npm run build && npm run smoke",
+        "cd examples/tauri-editor/src-tauri && PATH=\"$HOME/.cargo/bin:$PATH\" ~/.cargo/bin/cargo test",
+        "cd examples/tauri-editor && PATH=\"$HOME/.cargo/bin:$PATH\" npx tauri build --debug --no-bundle",
+        "! rg -n 'vactr|solid-js|/editor/' src test scripts",
+        "git status --porcelain"
+      ]
+    }
+  ],
+  "serialReconciliation": {
+    "logs": "tmp/vim-20261111/reconcile",
+    "commands": [
+      "npm run check && npm test && npm run build && node scripts/bundle-size.mjs",
+      "node scripts/bundle-size.mjs --entries core --out tmp/vim-20261111/reconcile/core-after.json",
+      "cd examples/tauri-editor && npm run check && npm run build && npm run smoke",
+      "cd examples/tauri-editor/src-tauri && PATH=\"$HOME/.cargo/bin:$PATH\" ~/.cargo/bin/cargo test",
+      "cd examples/tauri-editor && PATH=\"$HOME/.cargo/bin:$PATH\" npx tauri build --debug --no-bundle"
+    ]
+  }
+}

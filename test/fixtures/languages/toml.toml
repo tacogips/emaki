@@ -1,0 +1,20 @@
+# note
+[[array.table]]
+name = "hello"
+count = 42
+enabled = true
+limit = inf
+date = 1979-05-27T07:32:00Z
+text = """
+middle
+"""
+literal = '''
+other
+'''
+# sample line 0
+# sample line 1
+# sample line 2
+# sample line 3
+# sample line 4
+# sample line 5
+# sample line 6

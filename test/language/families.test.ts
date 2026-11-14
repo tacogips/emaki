@@ -1,0 +1,15 @@
+import { expect, it } from 'vitest';
+import { compileGrammar } from '../../src/language/grammar';
+import { cLike } from '../../src/language/families/c-like';
+import { lispLike } from '../../src/language/families/lisp-like';
+import { shellLike } from '../../src/language/families/shell-like';
+import { markupLike } from '../../src/language/families/markup-like';
+import { iniLike } from '../../src/language/families/ini-like';
+const tags = (tokens: readonly { tag: string }[]) => tokens.map(t => t.tag);
+it('supports C-like words, escapes and nested and documentation comments', () => { const g = compileGrammar(cLike({ name: 'c', keywords: ['if'], types: ['Thing'], nestedComments: true, docComments: true })); const r = g.tokenizeLine('if Thing "x\\n" foo( 0x1F_u8 /** @param */ /* a /* b */ c */', 'root'); for (const tag of ['keyword','type','string','escape','function','number','meta','comment']) expect(tags(r.tokens)).toContain(tag); expect(r.state).toBe('root'); });
+it('supports Lisp forms and constants', () => { const g = compileGrammar(lispLike({ name: 'lisp', specialForms: ['defun'] })); expect(tags(g.tokenizeLine('(defun f) :k', 'root').tokens)).toEqual(['punctuation','keyword','constant']); });
+it('supports shell variables, builtins and heredocs', () => { const g = compileGrammar(shellLike({ name: 'sh', keywords: [], builtins: ['echo'], variables: /\$\w+|\$\{[^}]+\}|%\w+%/, heredoc: true })); expect(tags(g.tokenizeLine('echo $HOME', 'root').tokens)).toEqual(['function','variable']); const a = g.tokenizeLine("<<-'EOF'", 'root'); const b = g.tokenizeLine('body', a.state); expect(b.tokens[0]?.tag).toBe('string'); expect(g.tokenizeLine('EOF', b.state).state).toBe('root'); });
+it('supports markup and embedded script', () => { const inner = compileGrammar(cLike({ name: 'js', keywords: ['let'] })); const g = compileGrammar(markupLike({ name: 'html', embeds: { script: inner } })); expect(tags(g.tokenizeLine('<a href="v">', 'root').tokens)).toEqual(['tag','attribute','string','tag']); const a = g.tokenizeLine('<!-- hi', 'root'); expect(g.tokenizeLine('-->', a.state).state).toBe('root'); const b = g.tokenizeLine('<script>', 'root'); const c = g.tokenizeLine('let x', b.state); expect(c.tokens[0]?.tag).toBe('keyword'); expect(g.tokenizeLine('</script>', c.state).state).toBe('root'); });
+it('supports ini sections and key/value', () => { const g = compileGrammar(iniLike({ name: 'ini', comments: ['#'], keyValue: /(\w+)\s*([=:])/ })); expect(tags(g.tokenizeLine('[sec]', 'root').tokens)).toEqual(['type']); expect(tags(g.tokenizeLine('key = 1', 'root').tokens)).toEqual(['property','operator','number']); });
+
+it('checks fixture spans and incremental edits', async () => { const { checkFixture } = await import('./support/fixture-check'); const g = compileGrammar(cLike({ name: 'c', keywords: ['if'] })); checkFixture(g, 'if 12\n/* comment */\n"hello"', { id: 'c', ext: 'c', classes: ['keyword', 'number', 'comment', 'string'], snippets: [['if', 'keyword'], ['comment', 'comment'], ['hello', 'string']] }); });
